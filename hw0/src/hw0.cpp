@@ -19,42 +19,39 @@ int main(int argc, char *  argv[]){
 int U_file(){
     vector<UObj> vector;
     ifstream fs("../U.csv");
-
+    double x,y,theta;
 
     //read from file
     int node_count = 0;
 
-    while(!fs.eof()){
+    while(fs >> x >> y >> theta){
         UObj temp;
-
-        fs >> temp.x;
-        fs >> temp.y;
-        fs >> temp.theta;
-
-        cout << vector.back().x << "\n";
+        
+        temp.x = x;
+        temp.y = y;
+        temp.theta = theta;
 
         vector.push_back(temp);
         node_count++;
+        
     }
 
     fs.close();
 
-
     //write to file
 
-    ofstream out;
-    out.open("../displacements.csv");
+    ofstream out("../displacements.csv");
 
     for(auto i:vector){
         out << i.x << ",";
         out << i.y << ",";
-        out << i.theta << "\n";
+        out << i.theta << endl;
     }
 
     out.close();
 
-    cout << "I used a vector of structs. Each struct has an x, y, and theta value in it.\n";
-    cout << "The number of nodes/structs I had in my vector was " << node_count << "\n";
+    cout << "I used a vector of structs. Each struct has an x, y, and theta value in it." << endl;
+    cout << "The number of nodes/structs I had in my vector was " << node_count << endl;
 
     return node_count;
 }
