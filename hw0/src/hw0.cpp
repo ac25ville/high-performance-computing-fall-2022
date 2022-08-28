@@ -32,17 +32,20 @@ struct NodeCoords{
     int column;
 };
 
-int main(int argc, char *  argv[]){
+int main(int argc, char * argv[]){
 
-    // if(argc<4){
-    //     cout << "REQUIRED ARGUMENTS: hw0/homework_0 /path/to/U.csv /path/to/nodeCoordinates.csv /path/to/K.csv N" ;
-    // }
+    if(argc<5){
+        cout << "REQUIRED ARGUMENTS: hw0/homework_0 /path/to/U.csv /path/to/nodeCoordinates.csv /path/to/K.csv N" << endl ;
+        return -1;
+    }
 
-    U_file("U.csv");
+    cout << argc << endl;
 
-    node_coords("nodeCoordinates.csv", 5);
+    U_file(argv[1]);
 
-    K_file("K.csv");
+    node_coords(argv[2], stoi(argv[4]));
+
+    K_file(argv[3]);
 
     return 0;
 }
@@ -54,10 +57,13 @@ int U_file(string filepath){
     ifstream fs(filepath);
     double x,y,theta;
 
-    // if(!fs){
-    //     cout << "Invalid filepath" << endl;
-    //     return -1;
-    // }
+    cout << endl << "1) U.csv" << endl;
+    cout << "---------------------------------------------------------------------------------------" << endl;
+
+    if(!fs){
+        cout << endl << "Invalid file or filepath" << endl;
+        return -1;
+    }
 
     while(fs >> x >> y >> theta){
         UObj temp;
@@ -84,8 +90,7 @@ int U_file(string filepath){
 
     out.close();
 
-    cout << endl << "1) U.csv" << endl;
-    cout << "---------------------------------------------------------------------------------------" << endl;
+    
 
     cout << "I used a vector of structs. Each struct has an x, y, and theta value in it." << endl;
     cout << "The number of nodes/structs I had in my vector was " << vector.size() << endl;
@@ -100,6 +105,14 @@ int node_coords(string filename, int N){
     string line;
     int column_count = 0;
     int row_count = 0;
+
+    cout << endl << "2) nodeCoordinates.csv" << endl;
+    cout << "---------------------------------------------------------------------------------------" << endl;
+
+    if(!fs){
+        cout << endl << "Invalid file or filepath" << endl;
+        return -1;
+    }
     
     while(getline(fs, line)){
         NodeCoords temp;
@@ -113,8 +126,6 @@ int node_coords(string filename, int N){
 
         temp.row = row_count;
         temp.column = column_count;
-
-        // vector.insert(vector.begin(), temp);
         
         vector.push_back(temp);
 
@@ -126,8 +137,7 @@ int node_coords(string filename, int N){
     }
 
     int count = 0;
-    cout << endl << "2) nodeCoordinates.csv" << endl;
-    cout << "---------------------------------------------------------------------------------------" << endl;
+    
     for(auto i:vector){
         cout << "(X: " << i.x << ", Y: " << i.y << ") | (ROW: " << i.row << ", COLUMN:" << i.column << ")" << endl;
         count++;
@@ -148,6 +158,14 @@ int K_file(string filename){
 
     ifstream fs(filename);
     string line;
+
+    cout << endl << "3) K.csv" << endl;
+    cout << "---------------------------------------------------------------------------------------" << endl;
+
+    if(!fs){
+        cout << endl << "Invalid file or filepath" << endl;
+        return -1;
+    }
 
     while(getline(fs, line)){
         vector<double> temp;
@@ -172,9 +190,6 @@ int K_file(string filename){
 
     int count = 0;
 
-    cout << endl << "3) K.csv" << endl;
-    cout << "---------------------------------------------------------------------------------------" << endl;
-
     cout << "Sum of all elements: " << sum_of_all << endl;
 
     cout << endl << "Rows" << endl;
@@ -192,7 +207,7 @@ int K_file(string filename){
     }
 
     cout << endl << "I used a vector of vector<double>, i.e. a 2D vector." << endl;
-    cout << "The size of my Stiffness Matrix was " << stiffness_matrix.size() << " rows and columns." << endl;
+    cout << "Stiffness Matrix size: " << stiffness_matrix.size() << " rows and columns." << endl;
     cout << "Lines Parsed: " << stiffness_matrix.size() << endl;
 
     return stiffness_matrix.size();
