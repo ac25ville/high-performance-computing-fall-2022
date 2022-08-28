@@ -5,9 +5,7 @@ project(homework0)
 
 set(CMAKE_COLOR_MAKEFILE ON)
 
-set_target_properties(PROPERTIES OUTPUT_NAME homework0)
-
 # set(EXECUTABLE_OUTPUT_PATH build)
 
 # add the executable
-add_executable(hw0 src/hw0.cpp)
+add_executable(homework0 src/hw0.cpp)
