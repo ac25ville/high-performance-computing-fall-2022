@@ -1,9 +1,11 @@
 cmake_minimum_required(VERSION 3.10)
 
 # set the project name
-project(hw0)
+project(homework0)
 
 set(CMAKE_COLOR_MAKEFILE ON)
+
+set_target_properties(PROPERTIES OUTPUT_NAME homework0)
 
 # set(EXECUTABLE_OUTPUT_PATH build)
 
