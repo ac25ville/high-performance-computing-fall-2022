@@ -3,7 +3,7 @@
 #include <iostream>
 
 using namespace std;
-int U_file();
+int U_file(string filepath);
 
 struct UObj{
     double x;
@@ -12,13 +12,13 @@ struct UObj{
 };
 
 int main(int argc, char *  argv[]){
-    U_file();
+    U_file("U.csv");
     return 0;
 }
 
-int U_file(){
+int U_file(string filepath){
     vector<UObj> vector;
-    ifstream fs("../U.csv");
+    ifstream fs(filepath);
     double x,y,theta;
 
     //read from file
@@ -40,7 +40,7 @@ int U_file(){
 
     //write to file
 
-    ofstream out("../displacements.csv");
+    ofstream out("displacements.csv");
 
     for(auto i:vector){
         out << i.x << ",";
