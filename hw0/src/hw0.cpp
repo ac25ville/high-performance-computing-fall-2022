@@ -110,7 +110,7 @@ int U_file(string filepath){
 
     cout << "I used a vector of structs. Each struct has an x, y, and theta value in it." << endl;
     cout << "The number of nodes/structs I had in my vector was " << vector.size()  << "." << endl;
-    cout << "Lines Parsed: " << vector.size() << endl;
+    cout << "Lines Parsed: " << vector.size()*3 << endl;
     cout << "Time to parse U.csv: " << fileParseTime << "s" << endl;
     cout << "Time to write to displacements.csv " << fileWriteTime << "s" << endl;
 
