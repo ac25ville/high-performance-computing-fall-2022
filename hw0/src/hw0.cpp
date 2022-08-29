@@ -109,10 +109,10 @@ int U_file(string filepath){
     out.close();
 
     cout << "I used a vector of structs. Each struct has an x, y, and theta value in it." << endl;
-    cout << "The number of nodes/structs I had in my vector was " << vector.size() << endl;
+    cout << "The number of nodes/structs I had in my vector was " << vector.size()  << "." << endl;
     cout << "Lines Parsed: " << vector.size() << endl;
-    cout << "Time to parse U.csv: " << fileParseTime << endl;
-    cout << "Time to write to displacements.csv " << fileWriteTime << endl;
+    cout << "Time to parse U.csv: " << fileParseTime << "s" << endl;
+    cout << "Time to write to displacements.csv " << fileWriteTime << "s" << endl;
 
     return vector.size();
 }
@@ -170,9 +170,9 @@ int node_coords(string filename, int N){
     }
 
     cout << "I used a vector of structs. Each struct has an x, y, value in it and a row, column value in it." << endl;
-    cout << "The number of nodes/structs I had in my vector was " << vector.size() << endl;
+    cout << "The number of nodes/structs I had in my vector was " << vector.size() << "." << endl;
     cout << "Lines Parsed: " << vector.size() << endl;
-    cout << "Time to parse nodeCoordinates.csv: " << calculate_elapsed_time(start_time, end_time).count() << endl;
+    cout << "Time to parse nodeCoordinates.csv: " << calculate_elapsed_time(start_time, end_time).count() << "s" << endl;
     
     return vector.size();
 }
@@ -259,7 +259,7 @@ int K_file(string filename){
     }
 
     cout << endl << "I used a vector of vector<double>, i.e. a 2D vector." << endl;
-    cout << "Stiffness Matrix size: " << stiffness_matrix.size() << " rows and columns." << endl;
+    cout << "Stiffness Matrix size: " << stiffness_matrix.size() << " rows and columns" << endl;
     cout << "Lines Parsed: " << stiffness_matrix.size() << endl;
     cout << "Time to parse K.csv: " << fileParseTime << "s Time to compute entire Stifness Matrix: " << sumTime << "s" <<endl << "Time to compute each row: " << rowSumTime << "s Time to compute each column: " << columnSumTime << "s" << endl;
  
