@@ -2,6 +2,8 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <chrono>
+#include <ctime>
 
 using namespace std;
 
@@ -16,6 +18,9 @@ vector<double> compute_sum_rows(vector<vector<double>> stiffness_matrix);
 vector<double> compute_sum_columns(vector<vector<double>> stiffness_matrix);
 double compute_row(vector<double> matrix_row);
 double compute_column(vector<vector<double>> stiffness_matrix, int column_number);
+
+std::chrono::time_point<std::chrono::steady_clock> get_time();
+std::chrono::duration<double> calculate_elapsed_time(std::chrono::time_point<std::chrono::steady_clock> start, std::chrono::time_point<std::chrono::steady_clock> end);
 
 //custom data types
 
@@ -57,6 +62,11 @@ int U_file(string filepath){
     ifstream fs(filepath);
     double x,y,theta;
 
+    std::chrono::time_point<std::chrono::steady_clock> start_time;
+    std::chrono::time_point<std::chrono::steady_clock> end_time;
+
+    double fileParseTime, fileWriteTime;
+
     cout << endl << "1) U.csv" << endl;
     cout << "---------------------------------------------------------------------------------------" << endl;
 
@@ -65,6 +75,7 @@ int U_file(string filepath){
         return -1;
     }
 
+    start_time = get_time();
     while(fs >> x >> y >> theta){
         UObj temp;
         
@@ -75,26 +86,33 @@ int U_file(string filepath){
         vector.push_back(temp);
         
     }
+    end_time = get_time();
 
     fs.close();
+
+    fileParseTime = calculate_elapsed_time(start_time, end_time).count();
 
     //write to file
 
     ofstream out("displacements.csv");
 
+    start_time = get_time();
     for(auto i:vector){
         out << i.x << ",";
         out << i.y << ",";
         out << i.theta << endl;
     }
+    end_time = get_time();
+
+    fileWriteTime = calculate_elapsed_time(start_time, end_time).count();
 
     out.close();
-
-    
 
     cout << "I used a vector of structs. Each struct has an x, y, and theta value in it." << endl;
     cout << "The number of nodes/structs I had in my vector was " << vector.size() << endl;
     cout << "Lines Parsed: " << vector.size() << endl;
+    cout << "Time to parse U.csv: " << fileParseTime << endl;
+    cout << "Time to write to displacements.csv " << fileWriteTime << endl;
 
     return vector.size();
 }
@@ -106,6 +124,9 @@ int node_coords(string filename, int N){
     int column_count = 0;
     int row_count = 0;
 
+    std::chrono::time_point<std::chrono::steady_clock> start_time;
+    std::chrono::time_point<std::chrono::steady_clock> end_time;
+
     cout << endl << "2) nodeCoordinates.csv" << endl;
     cout << "---------------------------------------------------------------------------------------" << endl;
 
@@ -114,6 +135,7 @@ int node_coords(string filename, int N){
         return -1;
     }
     
+    start_time = get_time();
     while(getline(fs, line)){
         NodeCoords temp;
         istringstream ss(line);
@@ -135,6 +157,7 @@ int node_coords(string filename, int N){
             row_count++;
         }
     }
+    end_time = get_time();
 
     int count = 0;
     
@@ -149,6 +172,7 @@ int node_coords(string filename, int N){
     cout << "I used a vector of structs. Each struct has an x, y, value in it and a row, column value in it." << endl;
     cout << "The number of nodes/structs I had in my vector was " << vector.size() << endl;
     cout << "Lines Parsed: " << vector.size() << endl;
+    cout << "Time to parse nodeCoordinates.csv: " << calculate_elapsed_time(start_time, end_time).count() << endl;
     
     return vector.size();
 }
@@ -159,6 +183,11 @@ int K_file(string filename){
     ifstream fs(filename);
     string line;
 
+    std::chrono::time_point<std::chrono::steady_clock> start_time;
+    std::chrono::time_point<std::chrono::steady_clock> end_time;
+
+    double fileParseTime, sumTime, rowSumTime, columnSumTime; 
+
     cout << endl << "3) K.csv" << endl;
     cout << "---------------------------------------------------------------------------------------" << endl;
 
@@ -166,6 +195,8 @@ int K_file(string filename){
         cout << endl << "Invalid file or filepath" << endl;
         return -1;
     }
+
+    start_time = get_time();
 
     while(getline(fs, line)){
         vector<double> temp;
@@ -181,12 +212,33 @@ int K_file(string filename){
     }
 
     fs.close();
+    end_time = get_time();
 
+    fileParseTime = calculate_elapsed_time(start_time, end_time).count();
+
+    //entire sum
+
+    start_time = get_time();
     double sum_of_all = compute_sum(stiffness_matrix);
+    end_time = get_time();
 
+    sumTime = calculate_elapsed_time(start_time, end_time).count();
+
+    //row sums
+
+    start_time = get_time();
     vector<double> rowSums = compute_sum_rows(stiffness_matrix);
+    end_time = get_time();
 
+    rowSumTime = calculate_elapsed_time(start_time, end_time).count();
+
+    //column sums
+
+    start_time = get_time();
     vector<double> columnSums = compute_sum_columns(stiffness_matrix);
+    end_time = get_time();
+
+    columnSumTime = calculate_elapsed_time(start_time, end_time).count();
 
     int count = 0;
 
@@ -209,7 +261,8 @@ int K_file(string filename){
     cout << endl << "I used a vector of vector<double>, i.e. a 2D vector." << endl;
     cout << "Stiffness Matrix size: " << stiffness_matrix.size() << " rows and columns." << endl;
     cout << "Lines Parsed: " << stiffness_matrix.size() << endl;
-
+    cout << "Time to parse K.csv: " << fileParseTime << "s Time to compute entire Stifness Matrix: " << sumTime << "s" <<endl << "Time to compute each row: " << rowSumTime << "s Time to compute each column: " << columnSumTime << "s" << endl;
+ 
     return stiffness_matrix.size();
 }
 
@@ -257,4 +310,15 @@ double compute_column(vector<vector<double>> stiffness_matrix, int column_number
         total+=i[column_number];
     }
     return total;
+}
+
+std::chrono::time_point<std::chrono::steady_clock> get_time(){
+    return std::chrono::steady_clock::now();
+}
+
+std::chrono::duration<double> calculate_elapsed_time(
+    std::chrono::time_point<std::chrono::steady_clock> start,
+    std::chrono::time_point<std::chrono::steady_clock> end
+    ){
+        return end - start;
 }
