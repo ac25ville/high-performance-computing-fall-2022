@@ -41,7 +41,7 @@ To re-run, enter "make", then the line above with the same or different paramete
 
 * make clean
 
-* make hw0/
+* make
 
 * ./homework0 U.csv nodeCoordinates.csv K.csv N (N being a value given by the grader)
 
