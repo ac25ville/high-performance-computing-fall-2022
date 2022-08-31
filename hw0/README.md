@@ -15,8 +15,7 @@ e.g.,
 git clone <addr_to_student_work> temp_folder_name
 
 
-## How to build
----
+## How to build from hpc22_acc9cm directory
 
 1) Make sure you are in the hpc22_acc9cm directory
 
@@ -28,6 +27,22 @@ git clone <addr_to_student_work> temp_folder_name
 
 * make -C hw0/
 
-* hw0/homework0 hw0/U.csv hw0/nodeCoordinates.csv hw0/K.csv N (N being a value given by the grader. From my understanding the test value was 5)
+* hw0/homework0 hw0/U.csv hw0/nodeCoordinates.csv hw0/K.csv N (N being a value given by the grader)
+
+To re-run, enter "make", then the line above with the same or different parameters.
+
+## How to build from hpc22_acc9cm/hw0 directory
+
+1) Make sure you are in the hpc22_acc9cm/hw0 directory
+
+2) Run the following commands in order
+
+* cmake CMakeLists.txt
+
+* make clean
+
+* make hw0/
+
+* ./homework0 U.csv nodeCoordinates.csv K.csv N (N being a value given by the grader)
 
 To re-run, enter "make", then the line above with the same or different parameters.
