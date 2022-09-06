@@ -29,17 +29,20 @@ scottgs::FloatMatrix scottgs::MatrixMultiply::operator()(const scottgs::FloatMat
 
 
 	// YOUR ALGORIHM WITH COMMENTS GOES HERE:
-	int sum; //use summator in order to reduce the amount of address resolving
-	for(int i=0; i<(int)lhs.size1(); i++){
-		for(int j=0; j<(int)rhs.size2(); j++){
+
+	float sum; //use summator in order to reduce the amount of address resolving
+
+	const long unsigned int lhs_rows = lhs.size1();
+	const long unsigned int rhs_columns = rhs.size2();
+	const long unsigned int rhs_rows = rhs.size1();
+
+	for(long unsigned int i=0; i<lhs_rows; i++){
+		for(long unsigned int j=0; j<rhs_columns; j++){
 			sum = 0; //init sum to zero otherwise += operator won't work correctly
-			for(int k=0; k<(int)rhs.size1(); k++){
-				sum += lhs(i, k) * rhs(k, j);
-			}
+			for(long unsigned int k=0; k<rhs_rows; k++){ sum += lhs(i, k) * rhs(k, j); }
 			result(i, j) = sum;
 		}
 	}
-
 	return result;
 }
 
