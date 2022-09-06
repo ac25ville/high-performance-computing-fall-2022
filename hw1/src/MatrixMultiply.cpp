@@ -29,13 +29,14 @@ scottgs::FloatMatrix scottgs::MatrixMultiply::operator()(const scottgs::FloatMat
 
 
 	// YOUR ALGORIHM WITH COMMENTS GOES HERE:
-
+	int sum; //use summator in order to reduce the amount of address resolving
 	for(int i=0; i<(int)lhs.size1(); i++){
 		for(int j=0; j<(int)rhs.size2(); j++){
-			result(i, j) = 0; //init position to zero otherwise += operator won't work correctly
+			sum = 0; //init sum to zero otherwise += operator won't work correctly
 			for(int k=0; k<(int)rhs.size1(); k++){
-				result(i,j) += lhs(i, k) * rhs(k, j);
+				sum += lhs(i, k) * rhs(k, j);
 			}
+			result(i, j) = sum;
 		}
 	}
 
