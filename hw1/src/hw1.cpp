@@ -14,7 +14,7 @@ void initRandomMatrix(scottgs::FloatMatrix& m);
 int main(int argc, char * argv[])
 {
 	std::cout << "Homework 1" << std::endl 
-		  << "Grant Scott (scottgs)" << std::endl;  // CHANGE TO YOUR name AND pawprint
+		  << "Austin Corteville (acc9cm)" << std::endl;  // CHANGE TO YOUR name AND pawprint
 
 	// ---------------------------------------------
 	// BEGIN: Self Test Portion
