@@ -6,7 +6,7 @@ all: hw1
 
 # HW 1
 hw1: hw1.o MatrixMultiply.o
-	g++ -o hw1 hw1.o MatrixMultiply.o
+	g++ -o hw1 -O2 -funroll-loops hw1.o MatrixMultiply.o
 
 hw1.o:	hw1.cpp 
 	g++ ${OTHER_FLAGS} -Werror -Wall -c hw1.cpp
