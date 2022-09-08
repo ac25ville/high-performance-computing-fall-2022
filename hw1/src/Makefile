@@ -1,5 +1,5 @@
 # set this to what I want
-OTHER_FLAGS=$(ENV_HPC_OPTS) -std=c++17
+OTHER_FLAGS=$(ENV_HPC_OPTS) -std=c++17 -O2 -funroll-loops
 
 # Standard all target
 all: hw1
