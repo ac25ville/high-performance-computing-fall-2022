@@ -31,9 +31,9 @@ scottgs::FloatMatrix scottgs::MatrixMultiply::operator()(const scottgs::FloatMat
 	// YOUR ALGORIHM WITH COMMENTS GOES HERE:
 
 	float sum; //use summator in order to reduce the amount of address resolving
-	const long unsigned int lhs_rows = (int)lhs.size1(); //doesn't need to resolve that value with every call
-	const long unsigned int rhs_columns = (int)rhs.size2();
-	const long unsigned int rhs_rows = (int)rhs.size1();
+	const long unsigned int lhs_rows = lhs.size1(); //doesn't need to resolve that value with every call
+	const long unsigned int rhs_columns = rhs.size2();
+	const long unsigned int rhs_rows = rhs.size1();
 
 	for(long unsigned int i=0; i<lhs_rows; i++){
 		for(long unsigned int j=0; j<rhs_columns; j++){
