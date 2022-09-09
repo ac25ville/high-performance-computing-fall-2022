@@ -26,8 +26,6 @@ scottgs::FloatMatrix scottgs::MatrixMultiply::operator()(const scottgs::FloatMat
 
 	scottgs::FloatMatrix result(lhs.size1(),rhs.size2());
 
-
-
 	// YOUR ALGORIHM WITH COMMENTS GOES HERE:
 
 	float sum; //use summator in order to reduce the amount of address resolving
@@ -36,7 +34,6 @@ scottgs::FloatMatrix scottgs::MatrixMultiply::operator()(const scottgs::FloatMat
 	const long unsigned int rhs_columns = rhs.size2();
 	const long unsigned int rhs_rows = rhs.size1();
 
-	// const float * result_init = &result(0,0);
 	const float * lhs_init = &lhs(0,0);
 	const float * rhs_init = &rhs(0,0);
 
