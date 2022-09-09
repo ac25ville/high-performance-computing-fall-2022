@@ -41,7 +41,7 @@ int main(int argc, char * argv[])
 					   std::pair<unsigned short,unsigned short>(70,90)) );
 
 // Change this to 1 to enable larger matrices, set to 0 for just the smalls
-#if 0
+#if 1
 	testList.push_back( std::make_pair(std::pair<unsigned short,unsigned short>(90,80),
 					   std::pair<unsigned short,unsigned short>(80,100)) );
 
