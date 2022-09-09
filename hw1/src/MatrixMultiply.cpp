@@ -34,16 +34,23 @@ scottgs::FloatMatrix scottgs::MatrixMultiply::operator()(const scottgs::FloatMat
 	const long unsigned int rhs_columns = rhs.size2();
 	const long unsigned int rhs_rows = rhs.size1();
 
-	const float * lhs_init = &lhs(0,0);
+	const float * lhs_init = &lhs(0,0); //get the initial address of the matrix  and store it as a constant
 	const float * rhs_init = &rhs(0,0);
 
 	for(long unsigned int i=0; i<lhs_rows; i++){
 		for(long unsigned int j=0; j<rhs_columns; j++){
 			sum = 0; //init sum to zero otherwise += operator won't work correctly
 			for(long unsigned int k=0; k<rhs_rows; k++){ 
-				sum += *(lhs_init + k + (i*lhs_columns)) * *(rhs_init + j + (k*rhs_columns)); 
+				sum += 
+				*(lhs_init + k + (i*lhs_columns)) 
+				//0,0 position in lhs, plus offset, plus adding the total number of columns, means you get to the next row when necessary
+				
+				* //multiplication operator, can be kind of hard to read with all the pointer notation in place
+				
+				*(rhs_init + j + (k*rhs_columns)); 
+				//same as above but rhs
 			}
-			result(i, j) = sum;
+			result(i, j) = sum; //from what I can tell, I am unable to use pointer notation to insert something at a specfic location
 		}
 	}
 	return result;
