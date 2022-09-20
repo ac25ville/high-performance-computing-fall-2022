@@ -29,6 +29,7 @@ int main(int agrc, char * argv[]){
 
     string filename = "../50_Coord.csv";
     int N = 50;
+    int C = 7;
 
     vector<cntNode> readVector = read_file(filename, N);
 
@@ -44,14 +45,14 @@ int main(int agrc, char * argv[]){
         return -1;
     }
 
-    vector<vector<cntNode>> tubes = grow_tubes(readVector, growthInfoVector, N, 7);
+    vector<vector<cntNode>> tubes = grow_tubes(readVector, growthInfoVector, N, C);
 
-    // for(auto j:tubes){
-    //     cout << endl << endl;
-    //     for(auto i:j){
-    //         cout << "(" << i.x << ", " << i.y << ")" << " | " << "(COL: " << i.column << ", GEN: " << i.generation << ")" << endl;
-    //     }
-    // }
+    for(auto j:tubes){
+        cout << endl << endl;
+        for(auto i:j){
+            cout << "(" << i.x << ", " << i.y << ")" << " | " << "(COL: " << i.column << ", GEN: " << i.generation << ")" << endl;
+        }
+    }
 
     // for(auto i:readVector){
     //     cout << "(" << i.x << ", " << i.y << ")" << " | " << "(COL: " << i.column << ", GEN: " << i.generation << ")" << endl;
@@ -64,13 +65,16 @@ vector<vector<cntNode>> grow_tubes(vector<cntNode> readVector, vector<growthInfo
 
     vector<vector<cntNode>> tubes;
 
-    int count = N;
-
-    while((count/N)<C){
+    int count = 0;
+    
+    
+    while((count/N)<C-1){
+        // cout << (count / N) << endl;
         vector<cntNode> newGen;
         int generation;
-        if((int)tubes.size()==0){ //initial growth positions
-            generation = readVector[readVector.size()-N].generation;
+        int init_bit = 0;
+        if((int)tubes.size()==0 && init_bit==0){ //initial growth positions
+            generation = C-1;
             cout << "init loop" << endl;
             for(int i=0; i<N; i++){
                 cntNode newNode;
@@ -82,20 +86,27 @@ vector<vector<cntNode>> grow_tubes(vector<cntNode> readVector, vector<growthInfo
                 // cout << "(" << newNode.x << ", " << newNode.y << ")" << " | " << "(COL: " << newNode.column << ", GEN: " << newNode.generation << ")" << endl;
 
                 newGen.push_back(newNode);
+                
             }
-            tubes.push_back(newGen);        
+            init_bit = 1;
+            tubes.push_back(newGen);      
         }
         int column;
+        // cout << newGen.size() << endl;
         while((int)newGen.size()<N){ //growth beyond intial positions
+
             cntNode newNode;
 
             column = count % N;
-            int previousRow = count / N;
+            // int previousRow = count / N;
             
             newNode.column = column;
             newNode.generation = generation;
 
-            // cout << "Theta: " << infoVector[count % N].theta << endl;
+            // cout 
+            // << "CNT #: " << column 
+            // << " | Theta: " << infoVector[column].theta << ", Magnitutde: " << infoVector[column].v 
+            // << " | X Offset: " << infoVector[column].x_offset << ", Y Offset: " << infoVector[column].y_offset << endl;
 
             // cout << "Tubes Size: " << tubes.size() << endl;
 
@@ -105,6 +116,8 @@ vector<vector<cntNode>> grow_tubes(vector<cntNode> readVector, vector<growthInfo
                 newNode.x = tubes[(count / N) - 1][column].x + infoVector[column].x_offset;
             }
 
+            // cout << "Made it past x calc" << endl;
+
             if(newGen.size() > 0 && newNode.x - newGen.at(newGen.size()-1).x == 5e-8){
                 infoVector[column].theta = 90;
                 infoVector[column-1].theta = 90;
@@ -112,15 +125,22 @@ vector<vector<cntNode>> grow_tubes(vector<cntNode> readVector, vector<growthInfo
                 newNode.x = tubes[(count / N) - 1][count % N].x + infoVector[column].x_offset;
 
             }
+
+            // cout << "Made it past corrections" << endl;
             
             newNode.y = tubes[(count / N)][column].y + infoVector[column].y_offset;
+
+            // cout << "(" << newNode.x << ", " << newNode.y << ")" << " | " << "(COL: " << newNode.column << ", GEN: " << newNode.generation << ")" << endl;
 
             newGen.push_back(newNode);
 
             count++;
         }
-        tubes.push_back(newGen);
+        if(init_bit==0){
+            tubes.push_back(newGen);
+        }
         generation--;
+        // cout << endl << endl;
         
     }
 
@@ -132,15 +152,17 @@ vector<growthInfo> get_growth_info(vector<cntNode> v, int N){
 
     vector<growthInfo> rVector;
 
-    const int size = v.size();
-    for(int i = 0; i<N; i++){
+    const int size = v.size()-1;
+    for(int i = N-1; i>=0; i--){
         growthInfo temp;
-        double x_1 = v[size-(N+i)].x;
-        double y_1 = v[size-(N+i)].y;
-        double x_0 = v[size - i].x;
-        double y_0 = v[size - i].y;
+        double x_1 = v[size - (i+N)].x;
+        double y_1 = v[size - (i+N)].y;
 
-        temp.theta = atan(y_1/abs(x_1-x_0));
+        double x_0 = v[size - (i)].x;
+        double y_0 = v[size - (i)].y;
+        // std::cout << "botttom: ";
+        // std::cout << size << " | " << x_0 << ", " << y_0 << endl;
+        temp.theta = atan2(y_1, x_1-x_0);
 
         temp.v = sqrt((pow((x_1 - x_0), 2) + pow((y_1 - y_0), 2)));
 
