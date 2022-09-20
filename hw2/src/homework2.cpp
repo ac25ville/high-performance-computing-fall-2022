@@ -29,7 +29,7 @@ int main(int agrc, char * argv[]){
 
     string filename = "../50_Coord.csv";
     int N = 50;
-    int C = 7;
+    int C = 50;
 
     vector<cntNode> readVector = read_file(filename, N);
 
@@ -47,12 +47,12 @@ int main(int agrc, char * argv[]){
 
     vector<vector<cntNode>> tubes = grow_tubes(readVector, growthInfoVector, N, C);
 
-    for(auto j:tubes){
-        cout << endl << endl;
-        for(auto i:j){
-            cout << "(" << i.x << ", " << i.y << ")" << " | " << "(COL: " << i.column << ", GEN: " << i.generation << ")" << endl;
-        }
-    }
+    // for(auto j:tubes){
+    //     cout << endl << endl;
+    //     for(auto i:j){
+    //         cout << "(" << i.x << ", " << i.y << ")" << " | " << "(COL: " << i.column << ", GEN: " << i.generation << ")" << endl;
+    //     }
+    // }
 
     // for(auto i:readVector){
     //     cout << "(" << i.x << ", " << i.y << ")" << " | " << "(COL: " << i.column << ", GEN: " << i.generation << ")" << endl;
@@ -103,10 +103,10 @@ vector<vector<cntNode>> grow_tubes(vector<cntNode> readVector, vector<growthInfo
             newNode.column = column;
             newNode.generation = generation;
 
-            // cout 
-            // << "CNT #: " << column 
-            // << " | Theta: " << infoVector[column].theta << ", Magnitutde: " << infoVector[column].v 
-            // << " | X Offset: " << infoVector[column].x_offset << ", Y Offset: " << infoVector[column].y_offset << endl;
+            cout 
+            << "CNT #: " << column 
+            << " | Theta: " << infoVector[column].theta << ", Magnitutde: " << infoVector[column].v 
+            << " | X Offset: " << infoVector[column].x_offset << ", Y Offset: " << infoVector[column].y_offset << endl;
 
             // cout << "Tubes Size: " << tubes.size() << endl;
 
@@ -162,7 +162,7 @@ vector<growthInfo> get_growth_info(vector<cntNode> v, int N){
         double y_0 = v[size - (i)].y;
         // std::cout << "botttom: ";
         // std::cout << size << " | " << x_0 << ", " << y_0 << endl;
-        temp.theta = atan2(y_1, x_1-x_0);
+        temp.theta = atan2(y_1, abs(x_1-x_0));
 
         temp.v = sqrt((pow((x_1 - x_0), 2) + pow((y_1 - y_0), 2)));
 
