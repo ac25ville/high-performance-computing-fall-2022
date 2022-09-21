@@ -24,6 +24,9 @@ struct growthInfo{
 vector<cntNode> read_file(string filename, int N);
 vector<growthInfo> get_growth_info(vector<cntNode> v, int N);
 vector<vector<cntNode>> grow_tubes(vector<cntNode> readVector, vector<growthInfo> infoVector, int N, int C);
+vector<vector<cntNode>> check_tubes(vector<vector<cntNode>> tubes, vector<growthInfo> infoVector, int N, int C);
+double calculate_distance(cntNode a, cntNode b);
+void write_to_file(vector<vector<cntNode>> tubes, string inputFile, int C);
 
 int main(int agrc, char * argv[]){
 
@@ -54,12 +57,16 @@ int main(int agrc, char * argv[]){
     //     }
     // }
 
+    write_to_file(tubes, filename, C);
+
     // for(auto i:readVector){
     //     cout << "(" << i.x << ", " << i.y << ")" << " | " << "(COL: " << i.column << ", GEN: " << i.generation << ")" << endl;
     // }
 
     return 0;
 }
+
+
 
 vector<vector<cntNode>> grow_tubes(vector<cntNode> readVector, vector<growthInfo> infoVector, int N, int C){
 
@@ -75,7 +82,7 @@ vector<vector<cntNode>> grow_tubes(vector<cntNode> readVector, vector<growthInfo
         int init_bit = 0;
         if((int)tubes.size()==0 && init_bit==0){ //initial growth positions
             generation = C-1;
-            cout << "init loop" << endl;
+            // cout << "init loop" << endl;
             for(int i=0; i<N; i++){
                 cntNode newNode;
                 newNode.x = readVector[readVector.size()-N+i].x;
@@ -103,30 +110,16 @@ vector<vector<cntNode>> grow_tubes(vector<cntNode> readVector, vector<growthInfo
             newNode.column = column;
             newNode.generation = generation;
 
-            cout 
-            << "CNT #: " << column 
-            << " | Theta: " << infoVector[column].theta << ", Magnitutde: " << infoVector[column].v 
-            << " | X Offset: " << infoVector[column].x_offset << ", Y Offset: " << infoVector[column].y_offset << endl;
+            // cout 
+            // << "CNT #: " << column 
+            // << " | Theta: " << infoVector[column].theta << ", Magnitutde: " << infoVector[column].v 
+            // << " | X Offset: " << infoVector[column].x_offset << ", Y Offset: " << infoVector[column].y_offset << endl;
+            
 
             // cout << "Tubes Size: " << tubes.size() << endl;
-
-            if(infoVector[column].theta!=90){
-                newNode.x = tubes[(count / N)][column].x + infoVector[column].x_offset;
-            } else {
-                newNode.x = tubes[(count / N) - 1][column].x + infoVector[column].x_offset;
-            }
+            newNode.x = tubes[(count / N)][column].x + infoVector[column].x_offset;
 
             // cout << "Made it past x calc" << endl;
-
-            if(newGen.size() > 0 && newNode.x - newGen.at(newGen.size()-1).x == 5e-8){
-                infoVector[column].theta = 90;
-                infoVector[column-1].theta = 90;
-                cout << "In corrections" << endl;
-                newNode.x = tubes[(count / N) - 1][count % N].x + infoVector[column].x_offset;
-
-            }
-
-            // cout << "Made it past corrections" << endl;
             
             newNode.y = tubes[(count / N)][column].y + infoVector[column].y_offset;
 
@@ -138,6 +131,7 @@ vector<vector<cntNode>> grow_tubes(vector<cntNode> readVector, vector<growthInfo
         }
         if(init_bit==0){
             tubes.push_back(newGen);
+            tubes = check_tubes(tubes, infoVector, N, C);
         }
         generation--;
         // cout << endl << endl;
@@ -146,6 +140,29 @@ vector<vector<cntNode>> grow_tubes(vector<cntNode> readVector, vector<growthInfo
 
     return tubes;
 
+}
+
+vector<vector<cntNode>> check_tubes(vector<vector<cntNode>> tubes, vector<growthInfo> infoVector, int N, int C){
+
+    vector<vector<cntNode>> temp = tubes;
+
+    for(int j = 0; j<(int)tubes.size(); j++){
+        for(int i = 1; i<N; i++){
+            if(calculate_distance(tubes[j][i], tubes[j][i-1]) < 5e-08){
+                cout << "tubes check" << endl;
+                for(int k = j; k<(int)tubes.size(); k++){
+                    temp[k][i].x = temp[k][i].x - infoVector[i].x_offset;
+                    temp[k][i-1].x = temp[k][i-1].x - infoVector[i-1].x_offset;
+                }
+            }
+        }
+    }
+
+    return temp;
+}
+
+double calculate_distance(cntNode a, cntNode b){
+    return sqrt((pow((a.x - b.x), 2) + pow((a.y - b.y), 2)));
 }
 
 vector<growthInfo> get_growth_info(vector<cntNode> v, int N){
@@ -212,4 +229,24 @@ vector<cntNode> read_file(string filename, int N){
     fs.close();
 
     return cntVector;
+}
+
+void write_to_file(vector<vector<cntNode>> tubes, string inputFile, int C){
+    stringstream ss(inputFile);
+    string substring;
+    while(getline(ss, substring, '/')){}
+    string out_name = to_string(C) +"_"+substring;
+    cout << out_name << endl;
+    ofstream out(out_name);
+
+    for(auto gen:tubes){
+        for(auto i:gen){
+            out << i.x << ",";
+            out << i.y << ",";
+            out << i.column << ",";
+            out << i.generation << endl;
+        }
+    }
+
+    out.close();
 }
