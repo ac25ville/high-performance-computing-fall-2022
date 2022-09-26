@@ -12,4 +12,4 @@ homework2.o: homework2.cpp
 	g++ ${OTHER_FLAGS} -Werror -Wall -c homework2.cpp
 
 clean:
-	rm -f *.o homework2
+	rm -f *.o homework2 *.csv

@@ -253,8 +253,11 @@ vector<cntNode> read_file(string filename, int N){
 void write_to_file(vector<vector<cntNode>> tubes, string inputFile, int C){
     stringstream ss(inputFile);
     string substring;
+    string cntCount;
     while(getline(ss, substring, '/')){}
-    string out_name = to_string(C) +"_"+substring;
+    stringstream newSS(substring);
+    getline(newSS, cntCount, '_');
+    string out_name = to_string(C) + "_" + cntCount + ".csv";
     // cout << out_name << endl;
     ofstream out(out_name);
 
