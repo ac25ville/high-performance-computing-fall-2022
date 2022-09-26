@@ -28,11 +28,18 @@ vector<growthInfo> check_tubes(vector<vector<cntNode>> tubes, vector<growthInfo>
 double calculate_distance(cntNode a, cntNode b);
 void write_to_file(vector<vector<cntNode>> tubes, string inputFile, int C);
 
-int main(int agrc, char * argv[]){
+int main(int argc, char * argv[]){
 
-    string filename = "../50_Coord.csv";
-    int N = 50;
-    int C = 50;
+    if(argc < 5){
+        cout << "Invalid Argument Amount. Required Arguments & Format:" << endl 
+        << "/path/to/homework2 /path/to/input_file N C P" << endl 
+        << "N: Number of CNT in file, C: number of growth cycles, P: integer level of parallelism" << endl;
+        return -1;
+    }
+    string filename = argv[1];
+    int N = stoi(argv[2]);
+    int C = stoi(argv[3]);
+    // int P = stoi(argv[4]);
 
     vector<cntNode> readVector = read_file(filename, N);
 
@@ -74,6 +81,14 @@ vector<vector<cntNode>> grow_tubes(vector<cntNode> readVector, vector<growthInfo
     vector<growthInfo> tempInfoVector = infoVector;
 
     int count = 0;
+
+    if(count == 0){
+        for(auto i:infoVector){
+            cout 
+            << " Theta: " << i.theta << ", Magnitutde: " << i.v << endl;
+            // << " X Offset: " << i.x_offset << ", Y Offset: " << i.y_offset << endl;
+        }
+    }
     
     
     while((count/N)<C-1){
@@ -111,10 +126,10 @@ vector<vector<cntNode>> grow_tubes(vector<cntNode> readVector, vector<growthInfo
             newNode.column = column;
             newNode.generation = generation;
 
-            cout 
-            << "CNT #: " << column 
-            << " | Theta: " << tempInfoVector[column].theta << ", Magnitutde: " << tempInfoVector[column].v 
-            << " | X Offset: " << tempInfoVector[column].x_offset << ", Y Offset: " << tempInfoVector[column].y_offset << endl;
+            // cout 
+            // << "CNT #: " << column 
+            // << " | Theta: " << tempInfoVector[column].theta << ", Magnitutde: " << tempInfoVector[column].v 
+            // << " | X Offset: " << tempInfoVector[column].x_offset << ", Y Offset: " << tempInfoVector[column].y_offset << endl;
             
 
             // cout << "Tubes Size: " << tubes.size() << endl;
@@ -146,22 +161,18 @@ vector<vector<cntNode>> grow_tubes(vector<cntNode> readVector, vector<growthInfo
 vector<growthInfo> check_tubes(vector<vector<cntNode>> tubes, vector<growthInfo> infoVector, int N, int C){
 
     vector<growthInfo> temp = infoVector;
+    const int tubes_size = (int)tubes.size();
 
-    for(int j = 0; j<(int)tubes.size(); j++){
-        for(int i = 1; i<N; i++){
-            if(calculate_distance(tubes[j][i], tubes[j][i-1]) < 5e-08 || calculate_distance(tubes[j][i], tubes[j][i+1]) < 5e-08){
-                cout << "tubes check" << endl;
-                for(int k = j; k<(int)tubes.size(); k++){
-                    // temp[k][i].x = temp[k][i].x - infoVector[i].x_offset;
-                    // temp[k][i-1].x = temp[k][i-1].x + infoVector[i-1].x_offset;
-                }
-                if(calculate_distance(tubes[j][i], tubes[j][i-1]) < 5e-08){
-                    temp[i-1].x_offset = 0;
-                } else {
-                    temp[i+1].x_offset = 0;
-                }
+    for(int i = 0; i<N; i++){
+        for(int j = 0; j<tubes_size; j++){
+            if(calculate_distance(tubes[j][i+1], tubes[tubes_size-1][i]) < 5e-08 || calculate_distance(tubes[j][i-1], tubes[tubes_size-1][i]) < 5e-08){
                 temp[i].x_offset = 0;
-                
+
+                if(calculate_distance(tubes[j][i+1], tubes[tubes_size-1][i]) < 5e-08){
+                    temp[i+1].x_offset = 0;
+                } else {
+                    temp[i-1].x_offset = 0;
+                }
             }
         }
     }
