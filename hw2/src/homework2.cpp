@@ -55,7 +55,29 @@ int main(int argc, char * argv[]){
         return -1;
     }
 
+    /**
+     * SHM = malloc(M*C*sizeof(shmNodes));
+     * pid_t pid;
+     * int i; //preserves i b/c copy stack
+     * for(i = 0; i < P && pid > 0; i++){
+     *      pid = fork();
+     * }
+     * 
+     * 
+     * 
+     * if(pid == 0){
+     *  size_t offset = N/P;
+     *  
+     *  grow_tubes(readVector, infoVector, start = offset*i, end = offset*(i+1)-1, int C, SHM);
+     * }
+    */
+
     vector<vector<cntNode>> tubes = grow_tubes(readVector, growthInfoVector, N, C);
+
+    if(tubes.empty()){
+        cout << "tubes empty" << endl;
+        return -1;
+    }
 
     // for(auto j:tubes){
     //     cout << endl << endl;
