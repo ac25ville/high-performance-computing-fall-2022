@@ -4,6 +4,16 @@
 #include <sstream>
 #include <iostream>
 #include <cmath>
+#include <string.h>
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <sys/ipc.h>
+#include <sys/sem.h>
+#include <sys/shm.h>
+#include <unistd.h>
+#include <cstdlib>
 
 using namespace std;
 
@@ -12,6 +22,12 @@ struct cntNode{
     double y;
     int generation;
     int column;
+};
+
+struct shmCNTNode{
+    double x;
+    double y;
+    double x_offset;
 };
 
 struct growthInfo{
@@ -24,9 +40,10 @@ struct growthInfo{
 vector<cntNode> read_file(string filename, int N);
 vector<growthInfo> get_growth_info(vector<cntNode> v, int N);
 vector<vector<cntNode>> grow_tubes(vector<cntNode> readVector, vector<growthInfo> infoVector, int N, int C);
+int grow_tubes(vector<cntNode> readVector, vector<growthInfo> infoVector, int N, int C, int start, int end, shmCNTNode shm[], int process);
 vector<growthInfo> check_tubes(vector<vector<cntNode>> tubes, vector<growthInfo> infoVector, int N, int C);
 double calculate_distance(cntNode a, cntNode b);
-void write_to_file(vector<vector<cntNode>> tubes, string inputFile, int C);
+void write_to_file(shmCNTNode shm[], string inputFile, int C, int N);
 
 int main(int argc, char * argv[]){
 
@@ -39,24 +56,128 @@ int main(int argc, char * argv[]){
     string filename = argv[1];
     int N = stoi(argv[2]);
     int C = stoi(argv[3]);
-    // int P = stoi(argv[4]);
+    int P = stoi(argv[4]);
 
     vector<cntNode> readVector = read_file(filename, N);
 
     if(readVector.empty()){
         cout << "readVector empty" << endl;
-        return -1;
+        return 1;
     }
 
     vector<growthInfo> growthInfoVector = get_growth_info(readVector, N);
 
     if(growthInfoVector.empty()){
         cout << "growthInfoVector empty" << endl;
-        return -1;
+        return 1;
     }
 
+    // int semId;
+    // key_t semKey = 123789;
+    // int semFlag = IPC_CREAT | 0666;
+
+    // int semCount = 1;
+    // int numOps = 1;
+
+    // if((semId = semget(semKey, semCount, semFlag)) == -1){
+    //     cerr << "Failed to semget(" << semKey << "," << semCount << "," << semFlag << ")" << endl;
+    //     exit(1);
+    // } else {
+    //     cout << "Successful semget resulted in (" << semId << endl;
+    // }
+
+    int shmId; 			
+	key_t shmKey = 123460; 		
+	int shmFlag = IPC_CREAT | 0666; 
+	
+	shmCNTNode * shm;
+
+    if((shmId = shmget(shmKey, sizeof(shmCNTNode) * N * C, shmFlag)) < 0){
+        cerr << "Init: Failed to initialize shared memory (" << shmId << ")" << endl; 
+		exit(1);
+    }
+
+    if ((shm = (shmCNTNode *)shmat(shmId, NULL, 0)) == (shmCNTNode *) -1){
+		cerr << "Init: Failed to attach shared memory (" << shmId << ")" << endl; 
+		exit(1);
+	}
+
+    int pCounter;
+    int growTubesCheck = 0;
+    pid_t pid;
+
+    for(pCounter=0; pCounter<P && pid != 0; pCounter++){
+        pid = fork();
+    }
+
+    if(pid < 0){
+        cerr << "Could not fork!!! ("<< pid <<")" << endl;
+		exit(1);
+    }
+
+    if(pid == 0){
+        int offset = N/P;
+        int start = offset*(pCounter-1);
+        int end = offset*pCounter;
+        
+        if(end == (N-(N%offset)) && offset%N!=0){
+
+            end+=N%offset;
+        }
+        growTubesCheck = grow_tubes(readVector, growthInfoVector, N, C, start, end, shm, pCounter);
+        _exit(0);
+    }
+
+    if(growTubesCheck == 1){
+        cerr << "Grow Tubes Failure!!" << endl;
+        exit(1);
+    }
+
+    int status;	// catch the status of the child
+
+	do  // in reality, mulptiple signals or exit status could come from the child
+	{
+
+		pid_t w = waitpid(pid, &status, WUNTRACED | WCONTINUED);
+		if (w == -1)
+		{
+			std::cerr << "Error waiting for child process ("<< pid <<")" << std::endl;
+			break;
+		}
+		
+		if (WIFEXITED(status))
+		{
+			if (status > 0)
+			{
+				cerr << "Child process ("<< pid <<") exited with non-zero status of " << WEXITSTATUS(status) << endl;
+				continue;
+			}
+			else
+			{
+				cout << "Child process ("<< pid <<") exited with status of " << WEXITSTATUS(status) << endl;
+				continue;
+			}
+		}
+		else if (WIFSIGNALED(status))
+		{
+			cout << "Child process ("<< pid <<") killed by signal (" << WTERMSIG(status) << ")" << endl;
+			continue;			
+		}
+		else if (WIFSTOPPED(status))
+		{
+			cout << "Child process ("<< pid <<") stopped by signal (" << WSTOPSIG(status) << ")" << endl;
+			continue;			
+		}
+		else if (WIFCONTINUED(status))
+		{
+			cout << "Child process ("<< pid <<") continued" << endl;
+			continue;
+		}
+	}
+	while (!WIFEXITED(status) && !WIFSIGNALED(status));
+
     /**
-     * SHM = malloc(M*C*sizeof(shmNodes));
+     * SHM = malloc(N*C*sizeof(shmNodes));
      * pid_t pid;
      * int i; //preserves i b/c copy stack
      * for(i = 0; i < P && pid > 0; i++){
@@ -68,115 +189,70 @@ int main(int argc, char * argv[]){
      * if(pid == 0){
      *  size_t offset = N/P;
      *  
-     *  grow_tubes(readVector, infoVector, start = offset*i, end = offset*(i+1)-1, int C, SHM);
+     *  grow_tubes(readVector, infoVector, start = offset*i, end = offset*(i+1)-1, int C, SHM, semaphore);
+     *      check_tubes(SHM, N , C);
      * }
     */
 
-    vector<vector<cntNode>> tubes = grow_tubes(readVector, growthInfoVector, N, C);
-
-    if(tubes.empty()){
-        cout << "tubes empty" << endl;
-        return -1;
-    }
-
-    // for(auto j:tubes){
-    //     cout << endl << endl;
-    //     for(auto i:j){
-    //         cout << "(" << i.x << ", " << i.y << ")" << " | " << "(COL: " << i.column << ", GEN: " << i.generation << ")" << endl;
-    //     }
+    // for(int i = 0; i<N*C; i++){
+    //         cout << "(" << shm[i].x << ", " << shm[i].y << ")" << " | " << "dx: " << shm[i].x_offset << endl;
     // }
 
-    write_to_file(tubes, filename, C);
+    write_to_file(shm, filename, C, N);
 
     // for(auto i:readVector){
     //     cout << "(" << i.x << ", " << i.y << ")" << " | " << "(COL: " << i.column << ", GEN: " << i.generation << ")" << endl;
     // }
+
+    //detach shm, then IPC key to delete
+
+    shmdt(shm);
+    shmctl(shmId, IPC_RMID, 0);
 
     return 0;
 }
 
 
 
-vector<vector<cntNode>> grow_tubes(vector<cntNode> readVector, vector<growthInfo> infoVector, int N, int C){
+int grow_tubes(vector<cntNode> readVector, vector<growthInfo> infoVector, int N, int C, int start, int end, shmCNTNode shm[], int process){
 
-    vector<vector<cntNode>> tubes;
-    vector<growthInfo> tempInfoVector = infoVector;
-
-    int count = 0;
-
-    if(count == 0){
+    if(start == 0){
         for(auto i:infoVector){
-            cout 
-            << " Theta: " << i.theta << ", Magnitutde: " << i.v << endl;
-            // << " X Offset: " << i.x_offset << ", Y Offset: " << i.y_offset << endl;
+            std::cout << " Theta: " << i.theta << ", X_offset: " << i.x_offset << endl;
         }
     }
-    
-    
-    while((count/N)<C-1){
-        // cout << (count / N) << endl;
-        vector<cntNode> newGen;
-        int generation;
-        int init_bit = 0;
-        if((int)tubes.size()==0 && init_bit==0){ //initial growth positions
-            generation = C-1;
-            // cout << "init loop" << endl;
-            for(int i=0; i<N; i++){
-                cntNode newNode;
-                newNode.x = readVector[readVector.size()-N+i].x;
-                newNode.y = readVector[readVector.size()-N+i].y;
-                newNode.column = readVector[readVector.size()-N+i].column;
-                newNode.generation = generation;
-
-                // cout << "(" << newNode.x << ", " << newNode.y << ")" << " | " << "(COL: " << newNode.column << ", GEN: " << newNode.generation << ")" << endl;
-
-                newGen.push_back(newNode);
-                
-            }
-            init_bit = 1;
-            tubes.push_back(newGen);      
-        }
-        int column;
-        // cout << newGen.size() << endl;
-        while((int)newGen.size()<N){ //growth beyond intial positions
-
-            cntNode newNode;
-
-            column = count % N;
-            // int previousRow = count / N;
-            
-            newNode.column = column;
-            newNode.generation = generation;
-
-            // cout 
-            // << "CNT #: " << column 
-            // << " | Theta: " << tempInfoVector[column].theta << ", Magnitutde: " << tempInfoVector[column].v 
-            // << " | X Offset: " << tempInfoVector[column].x_offset << ", Y Offset: " << tempInfoVector[column].y_offset << endl;
-            
-
-            // cout << "Tubes Size: " << tubes.size() << endl;
-            newNode.x = tubes[(count / N)][column].x + tempInfoVector[column].x_offset;
-
-            // cout << "Made it past x calc" << endl;
-            
-            newNode.y = tubes[(count / N)][column].y + tempInfoVector[column].y_offset;
-
-            // cout << "(" << newNode.x << ", " << newNode.y << ")" << " | " << "(COL: " << newNode.column << ", GEN: " << newNode.generation << ")" << endl;
-
-            newGen.push_back(newNode);
-
-            count++;
-        }
-        if(init_bit==0){
-            tubes.push_back(newGen);
-            tempInfoVector = check_tubes(tubes, tempInfoVector, N, C);
-        }
-        generation--;
-        // cout << endl << endl;
+    vector<shmCNTNode> initTemp;
+    int readVectorSize = (int)readVector.size();
+    for(int i=start; i<end; i++){
+        shmCNTNode newNode;
+        newNode.x = readVector.at(readVectorSize-N+i).x;
+        newNode.y = readVector.at(readVectorSize-N+i).y;
+        newNode.x_offset = infoVector.at(i).x_offset;
         
-    }
 
-    return tubes;
+        initTemp.push_back(newNode);
+    }
+    std::copy(initTemp.begin(),initTemp.end(), shm + start);
+
+    int column;
+    int row;
+
+    for(int j = 0; j<C; j++){
+        
+        row = j * N;
+        vector<shmCNTNode> temp;
+        for(column=start; column<end; column++){
+            shmCNTNode newNode;
+            newNode.x = shm[row + column].x + shm[row + column].x_offset;
+            newNode.y = shm[row + column].y + infoVector.at(column).y_offset;
+            newNode.x_offset = shm[row + column].x_offset;
+
+            temp.push_back(newNode);
+        }
+        std::copy(temp.begin(),temp.end(), shm+(row+start+N));
+    }
+    
+    return 0;
 
 }
 
@@ -272,7 +348,7 @@ vector<cntNode> read_file(string filename, int N){
     return cntVector;
 }
 
-void write_to_file(vector<vector<cntNode>> tubes, string inputFile, int C){
+void write_to_file(shmCNTNode shm[], string inputFile, int C, int N){
     stringstream ss(inputFile);
     string substring;
     string cntCount;
@@ -283,13 +359,9 @@ void write_to_file(vector<vector<cntNode>> tubes, string inputFile, int C){
     // cout << out_name << endl;
     ofstream out(out_name);
 
-    for(auto gen:tubes){
-        for(auto i:gen){
-            out << i.x << ",";
-            out << i.y << ",";
-            out << i.column << ",";
-            out << i.generation << endl;
-        }
+    for(int i = 0; i<C*N; i++){
+        out << shm[i].x << "," << shm[i].y << endl;
+        
     }
 
     out.close();
