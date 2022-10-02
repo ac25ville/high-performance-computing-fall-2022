@@ -5,6 +5,8 @@
 #include <iostream>
 #include <cmath>
 #include <string.h>
+#include <chrono>
+#include <ctime>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -40,12 +42,19 @@ struct growthInfo{
 vector<cntNode> read_file(string filename, int N);
 vector<growthInfo> get_growth_info(vector<cntNode> v, int N);
 vector<vector<cntNode>> grow_tubes(vector<cntNode> readVector, vector<growthInfo> infoVector, int N, int C);
-int grow_tubes(vector<cntNode> readVector, vector<growthInfo> infoVector, int N, int C, int start, int end, shmCNTNode shm[]);
-int check_tubes(int start, int end, shmCNTNode shm[], int N, int C, int gen);
+double grow_tubes(vector<cntNode> readVector, vector<growthInfo> infoVector, int N, int C, int start, int end, shmCNTNode shm[]);
+double check_tubes(int start, int end, shmCNTNode shm[], int N, int C, int gen);
 double calculate_distance(shmCNTNode a, shmCNTNode b);
 void write_to_file(shmCNTNode shm[], string inputFile, int C, int N);
+std::chrono::time_point<std::chrono::steady_clock> get_time();
+std::chrono::duration<double> calculate_elapsed_time(std::chrono::time_point<std::chrono::steady_clock> start, std::chrono::time_point<std::chrono::steady_clock> end);
 
 int main(int argc, char * argv[]){
+
+    std::chrono::time_point<std::chrono::steady_clock> totalStartTime;
+    std::chrono::time_point<std::chrono::steady_clock> totalEndTime;
+
+    totalStartTime = get_time();
 
     if(argc < 5){
         cout << "Invalid Argument Amount. Required Arguments & Format:" << endl 
@@ -58,15 +67,47 @@ int main(int argc, char * argv[]){
     int C = stoi(argv[3]);
     int P = stoi(argv[4]);
 
+    std::chrono::time_point<std::chrono::steady_clock> startTime;
+    std::chrono::time_point<std::chrono::steady_clock> endTime;
+
+    
+
+    double readTime = 0;
+    double growthInfoTime = 0;
+    double multiProcessTime = 0;
+    double writeTime = 0;
+    double totalTime = 0;
+
+    //read start
+
+    startTime = get_time();
+
     vector<cntNode> readVector = read_file(filename, N);
 
+    endTime = get_time();
+
+    readTime = calculate_elapsed_time(startTime, endTime).count();
+
+    //read end
+
+    //error check read vector
     if(readVector.empty()){
         cout << "readVector empty" << endl;
         return 1;
     }
 
+    //growth info collection start
+    startTime = get_time();
+
     vector<growthInfo> growthInfoVector = get_growth_info(readVector, N);
 
+    endTime = get_time();
+
+    growthInfoTime = calculate_elapsed_time(startTime, endTime).count();
+
+    //growth info collection end
+
+    //error check growth info vector
     if(growthInfoVector.empty()){
         cout << "growthInfoVector empty" << endl;
         return 1;
@@ -111,9 +152,15 @@ int main(int argc, char * argv[]){
 
     //process creation start
 
+    cout << "------------------------------" << endl;
+    cout << "      Multi Process Start     " << endl;
+    cout << "------------------------------" << endl << endl;
+
     int pCounter;
     pid_t pid;
+    
 
+    startTime = get_time();
     for(pCounter=0; pCounter<P && pid != 0; pCounter++){
         pid = fork();
     }
@@ -123,6 +170,7 @@ int main(int argc, char * argv[]){
 		exit(1);
     }
 
+    
     if(pid == 0){
         int offset = N/P;
         int start = offset*(pCounter-1);
@@ -134,6 +182,7 @@ int main(int argc, char * argv[]){
         grow_tubes(readVector, growthInfoVector, N, C, start, end, shm);
         _exit(0);
     }
+    
 
     //process creation end
 
@@ -180,28 +229,56 @@ int main(int argc, char * argv[]){
 	}
 	while (!WIFEXITED(status) && !WIFSIGNALED(status));
 
+    endTime = get_time();
+    multiProcessTime = calculate_elapsed_time(startTime, endTime).count();
+
+    cout << "------------------------------" << endl;
+    cout << "       Multi Process End      " << endl;
+    cout << "------------------------------" << endl << endl;
+
+    //write start
+
+    startTime = get_time();
+    
     write_to_file(shm, filename, C, N);
 
-    // for(auto i:readVector){
-    //         if(i.column==16)
-    //     cout << i.x << ", " << i.y << " | " << i.column << ", " << i.generation << endl;
-    // }
+    endTime = get_time();
 
+    //write end
+    
+    writeTime = calculate_elapsed_time(startTime, endTime).count();
+
+    //free shared memory, detach, then ctl
     shmdt(shm);
     shmctl(shmId, IPC_RMID, 0);
+
+    totalEndTime = get_time();
+    totalTime = calculate_elapsed_time(totalStartTime, totalEndTime).count();
+
+    cout << endl;
+    cout << "--------------------------------------------" << endl;
+    cout << "              Timing Summary                " << endl;
+    cout << "--------------------------------------------" << endl;
+    cout << " Total              | " << totalTime   << "s" << endl;
+    cout << " Read               | " << readTime    << "s" << endl;
+    cout << " Growth Info        | " << growthInfoTime << "s" << endl;
+    cout << " Multi Proc Portion | " << multiProcessTime  << "s" << endl;
+    cout << " Write              | " << writeTime   << "s" << endl;
+    cout << endl;
 
     return 0;
 }
 
+//grow and check
 
-
-int grow_tubes(vector<cntNode> readVector, vector<growthInfo> infoVector, int N, int C, int start, int end, shmCNTNode shm[]){
+double grow_tubes(vector<cntNode> readVector, vector<growthInfo> infoVector, int N, int C, int start, int end, shmCNTNode shm[]){
 
     if(start == 0){
         for(auto i:infoVector){
-            std::cout << " Theta: " << i.theta << ", X_offset: " << i.x_offset << endl;
+            std::cout << " Theta: " << i.theta << ", Magnitude: " << i.v << endl;
         }
     }
+
     vector<shmCNTNode> initTemp;
     int readVectorSize = (int)readVector.size();
     for(int i=start; i<end; i++){
@@ -222,34 +299,35 @@ int grow_tubes(vector<cntNode> readVector, vector<growthInfo> infoVector, int N,
         vector<shmCNTNode> temp;
         for(column=start; column<end; column++){
             shmCNTNode newNode;
-            newNode.x = shm[row + column].x + shm[row + column].x_offset;
-            newNode.y = shm[row + column].y + infoVector.at(column).y_offset;
-            newNode.x_offset = shm[row + column].x_offset;
+            newNode.x = (*(shm + row + column)).x + (*(shm + row + column)).x_offset;
+            newNode.y = (*(shm + row + column)).y + infoVector.at(column).y_offset;
+            newNode.x_offset = (*(shm + row + column)).x_offset;
 
             temp.push_back(newNode);
         }
         std::copy(temp.begin(),temp.end(), shm+(row+start+N));
         check_tubes(start, end, shm, N, C, j);
     }
+
     return 0;
 
 }
 
-int check_tubes(int start, int end, shmCNTNode shm[], int N, int C, int gen){
+double check_tubes(int start, int end, shmCNTNode shm[], int N, int C, int gen){
 
     int row;
     int column;
     for(column = start; column<end; column++){
         for(int j = 1; j<gen+1; j++){
-            shmCNTNode checkVal = shm[((gen+1) * N) + column];
+            shmCNTNode checkVal = *(shm + ((gen+1) * N) + column);
             row = j * N;
             if(
-                calculate_distance(shm[row + (column-1)], checkVal) < 5e-08 
+                calculate_distance(*(shm + row + (column -1)), checkVal) < 5e-08 
                 || 
-                calculate_distance(shm[row + (column+1)], checkVal) < 5e-08
+                calculate_distance(*(shm + row + (column +1)), checkVal) < 5e-08
             ){
 
-                if(calculate_distance(shm[row + (column+1)], checkVal) < 5e-08){
+                if(calculate_distance(*(shm + row + (column +1)), checkVal) < 5e-08){
                     shm[((gen+1) * N) + column+1].x_offset = 0;
                 } else {
                     shm[((gen+1) * N) + column-1].x_offset = 0;
@@ -267,37 +345,7 @@ double calculate_distance(shmCNTNode a, shmCNTNode b){
     return sqrt((pow((a.x - b.x), 2) + pow((a.y - b.y), 2)));
 }
 
-vector<growthInfo> get_growth_info(vector<cntNode> v, int N){
-
-    vector<growthInfo> rVector;
-
-    const int size = v.size()-1;
-    for(int i = N-1; i>=0; i--){
-        growthInfo temp;
-        double x_1 = v.at(size - (N + i)).x;
-        double y_1 = v.at(size - (N + i)).y;
-
-        double x_0 = v.at(size - i).x;
-        double y_0 = v.at(size - i).y;
-        
-        temp.theta = atan2(y_1, (x_1-x_0));
-
-        temp.v = sqrt((pow((x_1 - x_0), 2) + pow((y_1 - y_0), 2)));
-
-        temp.y_offset = temp.v * sin(temp.theta);
-
-        temp.x_offset = temp.v * cos(temp.theta);
-        // if(temp.theta > 1.5708){
-            // cout << i << " | " << temp.theta << endl;
-            // cout << "top: " << x_1 << ", " << y_1 << endl;
-        // }
-        
-
-        rVector.push_back(temp);
-    }
-
-    return rVector;
-}
+//initalization and write functions
 
 vector<cntNode> read_file(string filename, int N){
     vector<cntNode> cntVector;
@@ -309,6 +357,10 @@ vector<cntNode> read_file(string filename, int N){
         cout << "File invalid or does not exist." << endl;
         return cntVector;
     }
+
+    cout << "------------------------------" << endl;
+    cout << "          Read Start          " << endl;
+    cout << "------------------------------" << endl << endl;
 
     while(getline(fs, line)){
         istringstream ss(line);
@@ -334,10 +386,54 @@ vector<cntNode> read_file(string filename, int N){
 
     fs.close();
 
+    cout << "------------------------------" << endl;
+    cout << "           Read End           " << endl;
+    cout << "------------------------------" << endl << endl;
+
     return cntVector;
 }
 
+vector<growthInfo> get_growth_info(vector<cntNode> v, int N){
+
+    cout << "------------------------------" << endl;
+    cout << "       Growth Info Start      " << endl;
+    cout << "------------------------------" << endl << endl;
+
+    vector<growthInfo> rVector;
+
+    const int size = v.size()-1;
+    for(int i = N-1; i>=0; i--){
+        growthInfo temp;
+        double x_1 = v.at(size - (N + i)).x;
+        double y_1 = v.at(size - (N + i)).y;
+
+        double x_0 = v.at(size - i).x;
+        double y_0 = v.at(size - i).y;
+        
+        temp.theta = atan2(y_1, (x_1-x_0));
+
+        temp.v = sqrt((pow((x_1 - x_0), 2) + pow((y_1 - y_0), 2)));
+
+        temp.y_offset = temp.v * sin(temp.theta);
+
+        temp.x_offset = temp.v * cos(temp.theta);
+        
+        rVector.push_back(temp);
+    }
+
+    cout << "------------------------------" << endl;
+    cout << "       Growth Info End        " << endl;
+    cout << "------------------------------" << endl << endl;
+
+    return rVector;
+}
+
 void write_to_file(shmCNTNode shm[], string inputFile, int C, int N){
+
+    cout << "------------------------------" << endl;
+    cout << "         Begin Write          " << endl;
+    cout << "------------------------------" << endl << endl;
+
     stringstream ss(inputFile);
     string substring;
     string cntCount;
@@ -345,13 +441,29 @@ void write_to_file(shmCNTNode shm[], string inputFile, int C, int N){
     stringstream newSS(substring);
     getline(newSS, cntCount, '_');
     string out_name = to_string(C) + "_" + cntCount + ".csv";
-    // cout << out_name << endl;
     ofstream out(out_name);
 
     for(int i = 0; i<C*N; i++){
-        out << shm[i].x << "," << shm[i].y << endl;
+        out << (*(shm + i)).x << "," << (*(shm + i)).y << endl;
         
     }
 
     out.close();
+
+    cout << "------------------------------" << endl;
+    cout << "         End Write            " << endl;
+    cout << "------------------------------" << endl << endl;
+}
+
+//timing
+
+std::chrono::time_point<std::chrono::steady_clock> get_time(){
+    return std::chrono::steady_clock::now();
+}
+
+std::chrono::duration<double> calculate_elapsed_time(
+    std::chrono::time_point<std::chrono::steady_clock> start,
+    std::chrono::time_point<std::chrono::steady_clock> end
+    ){
+        return end - start;
 }
