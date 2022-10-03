@@ -39,10 +39,16 @@ struct growthInfo{
     double y_offset;
 };
 
+union senum {
+    int val;
+    struct semid_ds *buf;
+    ushort * array;
+} argument;
+
 vector<cntNode> read_file(string filename, int N);
 vector<growthInfo> get_growth_info(vector<cntNode> v, int N);
 vector<vector<cntNode>> grow_tubes(vector<cntNode> readVector, vector<growthInfo> infoVector, int N, int C);
-double grow_tubes(vector<cntNode> readVector, vector<growthInfo> infoVector, int N, int C, int start, int end, shmCNTNode shm[]);
+double grow_tubes(vector<cntNode> readVector, vector<growthInfo> infoVector, int N, int C, int P, int start, int end, shmCNTNode shm[], sembuf operations[], int process, int semId);
 double check_tubes(int start, int end, shmCNTNode shm[], int N, int C, int gen);
 double calculate_distance(shmCNTNode a, shmCNTNode b);
 void write_to_file(shmCNTNode shm[], string inputFile, int C, int N);
@@ -115,19 +121,37 @@ int main(int argc, char * argv[]){
 
     //semaphore creation start
 
-    // int semId;
-    // key_t semKey = 123789;
-    // int semFlag = IPC_CREAT | 0666;
+    int semId;
+    key_t semKey = 123789;
+    int semFlag = IPC_CREAT | 0666;
 
-    // int semCount = 1;
+    int semCount = 1;
 
-    // if((semId = semget(semKey, semCount, semFlag)) == -1){
-    //     cerr << "Failed to semget(" << semKey << "," << semCount << "," << semFlag << ")" << endl;
-    //     exit(1);
-    // } else {
-    //     cout << "Successful semget resulted in (" << semId << endl;
-    // }
+    if((semId = semget(semKey, semCount, semFlag)) == -1){
+        cerr << "Failed to semget(" << semKey << "," << semCount << "," << semFlag << ")" << endl;
+        exit(1);
+    } else {
+        cout << "Successful semget resulted in (" << semId << endl;
+    }
 
+    argument.val = 0;
+    if( semctl(semId, 0, SETVAL, argument) < 0){
+		std::cerr << "Init: Failed to initialize (" << semId << ")" << std::endl; 
+		exit(1);
+	}
+	else{
+		std::cout << "Init: Initialized (" << semId << ")" << std::endl; 
+	}
+
+    struct sembuf operations[2];
+
+    operations[0].sem_num = 0;
+    operations[0].sem_op = 1;
+    operations[0].sem_flg = 0;
+
+    operations[1].sem_num = 0;
+    operations[1].sem_op = -1;
+    operations[1].sem_flg = 0;
     //semaphore creation end
 
     //shared memory start
@@ -179,7 +203,7 @@ int main(int argc, char * argv[]){
         if(end == (N-(N%offset)) && offset%N!=0){
             end+=N%offset;
         }
-        grow_tubes(readVector, growthInfoVector, N, C, start, end, shm);
+        grow_tubes(readVector, growthInfoVector, N, C, P, start, end, shm, operations, pCounter, semId);
         _exit(0);
     }
     
@@ -237,7 +261,6 @@ int main(int argc, char * argv[]){
     cout << "------------------------------" << endl << endl;
 
     //write start
-
     startTime = get_time();
     
     write_to_file(shm, filename, C, N);
@@ -245,12 +268,13 @@ int main(int argc, char * argv[]){
     endTime = get_time();
 
     //write end
-    
     writeTime = calculate_elapsed_time(startTime, endTime).count();
 
     //free shared memory, detach, then ctl
     shmdt(shm);
     shmctl(shmId, IPC_RMID, 0);
+
+    semctl(semId, IPC_RMID, 0);
 
     totalEndTime = get_time();
     totalTime = calculate_elapsed_time(totalStartTime, totalEndTime).count();
@@ -271,7 +295,7 @@ int main(int argc, char * argv[]){
 
 //grow and check
 
-double grow_tubes(vector<cntNode> readVector, vector<growthInfo> infoVector, int N, int C, int start, int end, shmCNTNode shm[]){
+double grow_tubes(vector<cntNode> readVector, vector<growthInfo> infoVector, int N, int C, int P, int start, int end, shmCNTNode shm[], sembuf operations[], int process, int semId){
 
     if(start == 0){
         for(auto i:infoVector){
@@ -306,8 +330,24 @@ double grow_tubes(vector<cntNode> readVector, vector<growthInfo> infoVector, int
             temp.push_back(newNode);
         }
         std::copy(temp.begin(),temp.end(), shm+(row+start+N));
+        
+        
+        cout << semctl(semId, 0, GETVAL, argument) << " " << P-process << endl;
+
+        semop(semId, (operations+0), 1);
+        while(P > semctl(semId, 0, GETVAL, argument)){
+            if(P-process == semctl(semId, 0, GETVAL, argument)){
+                break;
+            }
+            
+        }
+        
         check_tubes(start, end, shm, N, C, j);
+        semop(semId, (operations+1), 1);
+
+        // cout << semctl(semId, 0, GETVAL, argument) << " " << process << endl;
     }
+    semop(semId, (operations+0), 1);
 
     return 0;
 
