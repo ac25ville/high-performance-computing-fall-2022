@@ -335,7 +335,7 @@ double grow_tubes(vector<cntNode> readVector, vector<growthInfo> infoVector, int
             semop(semId, (operations+0), 1);
                
         check_tubes(start, end, shm, N, C, j);
-            semop(semId, (operations+1), P);
+            semop(semId, (operations+1), 1);
     }
 
     return 0;
