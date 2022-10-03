@@ -330,24 +330,13 @@ double grow_tubes(vector<cntNode> readVector, vector<growthInfo> infoVector, int
             temp.push_back(newNode);
         }
         std::copy(temp.begin(),temp.end(), shm+(row+start+N));
-        
-        
-        cout << semctl(semId, 0, GETVAL, argument) << " " << P-process << endl;
 
-        semop(semId, (operations+0), 1);
-        while(P > semctl(semId, 0, GETVAL, argument)){
-            if(P-process == semctl(semId, 0, GETVAL, argument)){
-                break;
-            }
-            
-        }
-        
+        while(semctl(semId, 0, GETVAL, argument) !=0){}
+            semop(semId, (operations+0), 1);
+               
         check_tubes(start, end, shm, N, C, j);
-        semop(semId, (operations+1), 1);
-
-        // cout << semctl(semId, 0, GETVAL, argument) << " " << process << endl;
+            semop(semId, (operations+1), P);
     }
-    semop(semId, (operations+0), 1);
 
     return 0;
 
