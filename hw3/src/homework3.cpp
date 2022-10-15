@@ -114,7 +114,7 @@ int main(int argc, char * argv[]){
     vector<thread> tg;
 
     vector<cntNode> shm(C*N);
-    const cntNode * shmPointer = &(shm.at(0));
+    const cntNode * shmPointer = &shm.at(0);
     
     int offset = N/P;
     int start;
@@ -127,8 +127,8 @@ int main(int argc, char * argv[]){
         if(end == (N-(N%offset)) && offset%N!=0){
             end+=N%offset;
         }
-
-        tg.push_back(thread(grow_tubes(readVector, shmPointer, N, C, P, start, end)));
+        thread t(grow_tubes, readVector, shmPointer, N, C, P, start, end);
+        tg.push_back(move(t));
     }
 
     cout << "Cleaning up..." << endl;
