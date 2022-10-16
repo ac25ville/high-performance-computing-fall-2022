@@ -22,19 +22,19 @@ struct cntNode{
 };
 
 struct growthInfo{
-    double theta; //angle of vector growth
-    double v; //magnitutde of vector growth
     double x_offset;
     double y_offset;
+    double theta;
+    double v;
 };
 
 vector<cntNode> read_file(string filename, int N);
 vector<growthInfo> get_growth_info(vector<cntNode> v, int N);
-void grow_tubes(vector<cntNode> readVector, cntNode* shm, int N, int C, int P, int start, int end);
+void grow_tubes(vector<cntNode> readVector, cntNode* shm, growthInfo* g, int N, int C, int P, int start, int end);
 int check_tubes(const cntNode * shm, int start, int end, int N, int C, int gen);
 double calculate_distance(cntNode a, cntNode b);
 void write_to_file(const cntNode * shm, string inputFile, int C, int N);
-cntNode calculate_new_node(cntNode a, cntNode b);
+growthInfo calculate_new_node(cntNode a, cntNode b, growthInfo g);
 std::chrono::time_point<std::chrono::steady_clock> get_time();
 std::chrono::duration<double> calculate_elapsed_time(std::chrono::time_point<std::chrono::steady_clock> start, std::chrono::time_point<std::chrono::steady_clock> end);
 
@@ -62,7 +62,6 @@ int main(int argc, char * argv[]){
     
 
     double readTime = 0;
-    double growthInfoTime = 0;
     double multiProcessTime = 0;
     double writeTime = 0;
     double totalTime = 0;
@@ -85,30 +84,11 @@ int main(int argc, char * argv[]){
         return 1;
     }
 
-    //growth info collection start
-    startTime = get_time();
-
-    vector<growthInfo> growthInfoVector = get_growth_info(readVector, N);
-
-    endTime = get_time();
-
-    growthInfoTime = calculate_elapsed_time(startTime, endTime).count();
-
-    //growth info collection end
-
-    //error check growth info vector
-    if(growthInfoVector.empty()){
-        cout << "growthInfoVector empty" << endl;
-        return 1;
-    }   
-
-    //process creation start
+    //thread creation start
 
     cout << "------------------------------" << endl;
     cout << "      Multi Process Start     " << endl;
     cout << "------------------------------" << endl << endl;
-
-    
 
     startTime = get_time();
     vector<thread> tg;
@@ -117,6 +97,9 @@ int main(int argc, char * argv[]){
     vector<cntNode> shm(C*N);
     cntNode * shmPointer = shm.data();
     
+    vector<growthInfo> growthInfoVector = get_growth_info(readVector, N);
+    growthInfo * growthInfoPointer = growthInfoVector.data();
+
     int offset = N/P;
     int start;
     int end;
@@ -128,7 +111,7 @@ int main(int argc, char * argv[]){
         if(end == (N-(N%offset)) && offset%N!=0){
             end+=N%offset;
         }
-        tg.push_back(thread(grow_tubes, readVector, shmPointer, N, C, P, start, end));
+        tg.push_back(thread(grow_tubes, readVector, shmPointer, growthInfoPointer, N, C, P, start, end));
     }
 
     cout << "Cleaning up..." << endl;
@@ -167,7 +150,6 @@ int main(int argc, char * argv[]){
     cout << "--------------------------------------------" << endl;
     cout << " Total              | " << totalTime   << "s" << endl;
     cout << " Read               | " << readTime    << "s" << endl;
-    cout << " Growth Info        | " << growthInfoTime << "s" << endl;
     cout << " Multi Proc Portion | " << multiProcessTime  << "s" << endl;
     cout << " Write              | " << writeTime   << "s" << endl;
     cout << endl;
@@ -177,7 +159,7 @@ int main(int argc, char * argv[]){
 
 //grow and check
 
-void grow_tubes(vector<cntNode> readVector, cntNode* shm, int N, int C, int P, int start, int end){
+void grow_tubes(vector<cntNode> readVector, cntNode* shm, growthInfo* g, int N, int C, int P, int start, int end){
 
     // if(start == 0){
     //     for(auto i:infoVector){
@@ -205,12 +187,18 @@ void grow_tubes(vector<cntNode> readVector, cntNode* shm, int N, int C, int P, i
     for(int j = 0; j<C-1; j++){
         row = j * N;
         vector<cntNode> temp;
+        cout << row << endl;
         for(column=start; column<end; column++){
-            cntNode newNode = calculate_new_node((*(shm + row + column)), (*(shm + row + column + N)));
+            calculate_new_node((*(shm + column)), (*(shm + column + N)), (*(g+column)));         
+            cntNode newNode;
+
+            newNode.x = (*(shm + column + row + N)).x + (*(g+column)).x_offset;
+            newNode.y = (*(shm + column + row + N)).y + (*(g+column)).y_offset;
+
 
             temp.push_back(newNode);
         }
-        if(row+start+(N*2)<C*N)
+        if((row+start+(N*2))<C*N)
             std::copy(temp.begin(),temp.end(), shm+(row+start+(N*2)));
                
         // check_tubes(start, end, shm, N, C, j);
@@ -218,8 +206,8 @@ void grow_tubes(vector<cntNode> readVector, cntNode* shm, int N, int C, int P, i
 
 }
 
-cntNode calculate_new_node(cntNode a, cntNode b){
-    cntNode newNode;
+growthInfo calculate_new_node(cntNode a, cntNode b, growthInfo g){
+    growthInfo newGrowthInfo;
     double x_0 = a.x;
     double y_0 = a.y;
     double x_1 = b.x;
@@ -233,10 +221,15 @@ cntNode calculate_new_node(cntNode a, cntNode b){
 
     double x_offset = v * cos(theta);
 
-    newNode.x = b.x + x_offset;
-    newNode.y = b.y + y_offset;
+    newGrowthInfo.x_offset = x_offset;
 
-    return newNode;
+    newGrowthInfo.y_offset = y_offset;
+
+    newGrowthInfo.x_offset = g.x_offset;
+
+    newGrowthInfo.y_offset = g.y_offset;
+
+    return newGrowthInfo;
 }
 
 int check_tubes(const cntNode * shm, int start, int end, int N, int C, int gen){
@@ -340,6 +333,8 @@ vector<growthInfo> get_growth_info(vector<cntNode> v, int N){
         temp.y_offset = temp.v * sin(temp.theta);
 
         temp.x_offset = temp.v * cos(temp.theta);
+
+        cout << temp.x_offset << " " << temp.y_offset << endl;
         
         rVector.push_back(temp);
     }
