@@ -198,23 +198,23 @@ void grow_tubes(vector<cntNode> readVector, cntNode* shm, int N, int C, int P, i
             cntNode newNode;
             newNode.x = readVector.at(readVectorSize-(N+row)+column).x;
             newNode.y = readVector.at(readVectorSize-(N+row)+column).y;
-            
+
             initTemp.push_back(newNode);
         }
         std::copy(initTemp.begin(),initTemp.end(), shm + (start+row));
     }
     
-    for(int j = 0; j<C; j++){
+    for(int j = 0; j<C-1; j++){
         row = j * N;
         vector<cntNode> temp;
         cout << j << endl;
         for(column=start; column<end; column++){
-            // cout <<(*(shm + row + column)).x << " " << (*(shm + row + column)).y << " | " << (*(shm + row + column + N)).x << " " << (*(shm + row + column + N)).y << endl;
             cntNode newNode = calculate_new_node((*(shm + row + column)), (*(shm + row + column + N)));
 
             temp.push_back(newNode);
         }
-        std::copy(temp.begin(),temp.end(), shm+(row+start+(N*2)));
+        if(row+start+(N*2)<C*N)
+            std::copy(temp.begin(),temp.end(), shm+(row+start+(N*2)));
                
         // check_tubes(start, end, shm, N, C, j);
     }
@@ -237,7 +237,9 @@ cntNode calculate_new_node(cntNode a, cntNode b){
     double x_offset = v * cos(theta);
 
     newNode.x = b.x + x_offset;
-    newNode.x = b.y + y_offset;
+    newNode.y = b.y + y_offset;
+
+    cout << x_offset << ", " << y_offset << " | " << b.x << ", " << b.y <<  endl;
 
     return newNode;
 }
