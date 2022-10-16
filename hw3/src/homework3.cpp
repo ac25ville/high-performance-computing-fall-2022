@@ -121,15 +121,13 @@ int main(int argc, char * argv[]){
     int start;
     int end;
     mutex m;
-    
-    cout << offset << endl;
+
     for(tCount = 0; tCount<P; tCount++){
         start = offset*(tCount);
         end = offset*(tCount+1);
         if(end == (N-(N%offset)) && offset%N!=0){
             end+=N%offset;
         }
-        cout << start << " " << end << endl;
         tg.push_back(thread(grow_tubes, readVector, shmPointer, N, C, P, start, end));
     }
 
@@ -207,7 +205,6 @@ void grow_tubes(vector<cntNode> readVector, cntNode* shm, int N, int C, int P, i
     for(int j = 0; j<C-1; j++){
         row = j * N;
         vector<cntNode> temp;
-        cout << j << endl;
         for(column=start; column<end; column++){
             cntNode newNode = calculate_new_node((*(shm + row + column)), (*(shm + row + column + N)));
 
@@ -238,8 +235,6 @@ cntNode calculate_new_node(cntNode a, cntNode b){
 
     newNode.x = b.x + x_offset;
     newNode.y = b.y + y_offset;
-
-    cout << x_offset << ", " << y_offset << " | " << b.x << ", " << b.y <<  endl;
 
     return newNode;
 }
