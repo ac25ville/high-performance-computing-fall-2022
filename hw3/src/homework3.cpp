@@ -9,6 +9,7 @@
 #include <ctime>
 #include <thread>
 #include <functional>
+#include <mutex>
 
 #include <unistd.h>
 #include <cstdlib>
@@ -29,8 +30,7 @@ struct growthInfo{
 
 vector<cntNode> read_file(string filename, int N);
 vector<growthInfo> get_growth_info(vector<cntNode> v, int N);
-vector<vector<cntNode>> grow_tubes(vector<cntNode> readVector, vector<growthInfo> infoVector, int N, int C);
-void grow_tubes(vector<cntNode> readVector, cntNode * shm, int N, int C, int P, int start, int end);
+void grow_tubes(vector<cntNode> readVector, cntNode* shm, int N, int C, int P, int start, int end);
 int check_tubes(const cntNode * shm, int start, int end, int N, int C, int gen);
 double calculate_distance(cntNode a, cntNode b);
 void write_to_file(const cntNode * shm, string inputFile, int C, int N);
@@ -110,9 +110,8 @@ int main(int argc, char * argv[]){
     
 
     startTime = get_time();
-
-    int tCount;
     vector<thread> tg;
+    int tCount;
 
     vector<cntNode> shm(C*N);
     cntNode * shmPointer = &shm.at(0);
@@ -121,19 +120,16 @@ int main(int argc, char * argv[]){
     int start;
     int end;
     
-
+    cout << offset << endl;
     for(tCount = 0; tCount<P; tCount++){
-        start = offset*(tCount-1);
-        end = offset*tCount;
+        start = offset*(tCount);
+        end = offset*(tCount+1);
         if(end == (N-(N%offset)) && offset%N!=0){
             end+=N%offset;
         }
-        // thread t(grow_tubes, readVector, shmPointer, N, C, P, start, end);
-        cout << start << end << endl;
-        cntNode temp;
-        cntNode tempA;
-        thread t(calculate_distance, temp, tempA);
-        tg.push_back(move(t));
+        cout << start << " " << end << endl;
+        
+        tg.push_back(thread(grow_tubes, readVector, shmPointer, N, C, P, start, end));
     }
 
     cout << "Cleaning up..." << endl;
@@ -184,7 +180,7 @@ int main(int argc, char * argv[]){
 
 //grow and check
 
-void grow_tubes(vector<cntNode> readVector, cntNode * shm, int N, int C, int P, int start, int end){
+void grow_tubes(vector<cntNode> readVector, cntNode* shm, int N, int C, int P, int start, int end){
 
     // if(start == 0){
     //     for(auto i:infoVector){
