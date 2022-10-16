@@ -44,25 +44,30 @@ std::chrono::duration<double> calculate_elapsed_time(std::chrono::time_point<std
 
 int main(int argc, char * argv[]){
 
+    //total time counters
     std::chrono::time_point<std::chrono::steady_clock> totalStartTime;
     std::chrono::time_point<std::chrono::steady_clock> totalEndTime;
 
-    totalStartTime = get_time();
+    totalStartTime = get_time(); //start timer
 
-    if(argc < 5){
+    if(argc < 5){ // check for arguments, give hopefully helpful feedback
         cout << "Invalid Argument Amount. Required Arguments & Format:" << endl 
         << "/path/to/homework2 /path/to/input_file N C P" << endl 
         << "N: Number of CNT in file, C: number of growth cycles, P: integer level of parallelism" << endl;
         return -1;
     }
+
+    //argument reads and conversions
     string filename = argv[1];
     int N = stoi(argv[2]);
     int C = stoi(argv[3]);
     int P = stoi(argv[4]);
 
+    //start and end time for each subsection of the program
     std::chrono::time_point<std::chrono::steady_clock> startTime;
     std::chrono::time_point<std::chrono::steady_clock> endTime;
 
+    //declare doubles to record times
     double readTime = 0;
     double multiProcessTime = 0;
     double writeTime = 0;
@@ -93,16 +98,16 @@ int main(int argc, char * argv[]){
     cout << "------------------------------" << endl << endl;
 
     startTime = get_time();
-    vector<thread> tg;
+    vector<thread> tg; //create thread group
     int tCount;
 
     vector<cntNode> shm(C*N);
-    cntNode * shmPointer = shm.data();
+    cntNode * shmPointer = shm.data(); //pointer to pre-allocated vector, to avoid resizing issues
 
-    boost::barrier bar(P);
+    boost::barrier bar(P); //boost barrier for check tubes portion, mutex declared on a global scope.
     
-    vector<growthInfo> growthInfoVector = get_growth_info(readVector, N);
-    growthInfo * growthInfoPointer = growthInfoVector.data();
+    vector<growthInfo> growthInfoVector = get_growth_info(readVector, N); //get the intial growth data
+    growthInfo * growthInfoPointer = growthInfoVector.data(); //pointer to vector, same as shm
 
     int offset = N/P;
     int start;
@@ -110,21 +115,22 @@ int main(int argc, char * argv[]){
     
 
     for(tCount = 0; tCount<P; tCount++){
+        //calculations as in previous assignment, but just with tCount instead of pCount
         start = offset*(tCount);
         end = offset*(tCount+1);
         if(end == (N-(N%offset)) && offset%N!=0){
             end+=N%offset;
         }
+        //init thread directly into thread group
         tg.push_back(thread(grow_tubes, readVector, shmPointer, growthInfoPointer, N, C, P, start, end, std::ref(bar)));
+        //need to wrap bar in reference for it to pass correctly
     }
 
     cout << "Cleaning up..." << endl;
-    //wait for threads
 
-
+    //close threads, join appears to cause a wait
     for (vector<thread>::iterator it = tg.begin() ; it != tg.end(); ++it){
         it->join();
-        cout << "Joined Thread" << endl;
     }
 
     endTime = get_time();
@@ -164,6 +170,7 @@ int main(int argc, char * argv[]){
 
 void grow_tubes(vector<cntNode> readVector, cntNode* shm, growthInfo* g, int N, int C, int P, int start, int end, boost::barrier& bar){
 
+    //print inital values as asked for previously, decided not to change this functionality since it oucld be useful
     if(start == 0){
         for(int i = 0; i<N; i++){
             std::cout << " Theta: " << (*(g+i)).theta << ", Magnitude: " << (*(g+i)).v << endl;
@@ -191,7 +198,10 @@ void grow_tubes(vector<cntNode> readVector, cntNode* shm, growthInfo* g, int N, 
         row = j * N;
         vector<cntNode> temp;
         for(column=start; column<end; column++){
-            calculate_new_node((*(shm + column)), (*(shm + column + N)), (*(g+column))); //calculates trig everytime, serving the expressed intention of taking time as stated in class         
+            //calculates trig everytime, serving the expressed intention of taking time as stated in class 
+            //still returns offsets since addition is simpler logically than returning a new node (at least for me)
+            g[column] = calculate_new_node((*(shm + column)), (*(shm + column + N)), (*(g+column))); 
+                    
             cntNode newNode;
 
             //still adding x & y offset
@@ -200,18 +210,16 @@ void grow_tubes(vector<cntNode> readVector, cntNode* shm, growthInfo* g, int N, 
 
             temp.push_back(newNode);
         }
-        if((row+start+(N*2))<C*N)
+        if((row+start+(N*2))<C*N) //to avoid seg fault; only need to insert above the 2 previous
             std::copy(temp.begin(),temp.end(), shm+(row+start+(N*2)));
         
-        bar.wait();
-        boost::lock_guard<boost::mutex> locker(m);      
-        check_tubes(shm, g, start, end, N, C, j);
+        bar.wait(); //barrier
+        boost::lock_guard<boost::mutex> locker(m); //mutex      
+        check_tubes(shm, g, start, end, N, C, j); //check tubes
 
     }
 
 }
-
-
 
 int check_tubes(cntNode* shm, growthInfo* g, int start, int end, int N, int C, int gen){
 
@@ -227,6 +235,8 @@ int check_tubes(cntNode* shm, growthInfo* g, int start, int end, int N, int C, i
                 calculate_distance(*(shm + row + (column +1)), checkVal) < 5e-08
             ){
 
+                //sets offset to zero here, the calculate node function still does trig though.
+
                 if(calculate_distance(*(shm + row + (column +1)), checkVal) < 5e-08){
                     g[column+1].x_offset = 0;
                 } else if(calculate_distance(*(shm + row + (column -1)), checkVal) < 5e-08) {
@@ -241,11 +251,15 @@ int check_tubes(cntNode* shm, growthInfo* g, int start, int end, int N, int C, i
     return 0;
 }
 
+//distance between two nodes calc
+
 double calculate_distance(cntNode a, cntNode b){
     return sqrt((pow((a.x - b.x), 2) + pow((a.y - b.y), 2)));
 }
 
 growthInfo calculate_new_node(cntNode a, cntNode b, growthInfo g){
+
+    //trig is done with every iteration
     growthInfo newGrowthInfo;
     double x_0 = a.x;
     double y_0 = a.y;
@@ -259,14 +273,15 @@ growthInfo calculate_new_node(cntNode a, cntNode b, growthInfo g){
     double y_offset = v * sin(theta);
 
     double x_offset = v * cos(theta);
-
-    newGrowthInfo.x_offset = x_offset;
+    
+    //if offset is already 0 then can't change it, otherwise, set it again 
+    //(it will always be the same value, but it is still recalculated every time)
+    if(g.x_offset == 0)
+        newGrowthInfo.x_offset = g.x_offset;
+    else
+        newGrowthInfo.x_offset = x_offset;
 
     newGrowthInfo.y_offset = y_offset;
-
-    newGrowthInfo.x_offset = g.x_offset;
-
-    newGrowthInfo.y_offset = g.y_offset;
 
     return newGrowthInfo;
 }
@@ -324,6 +339,7 @@ vector<growthInfo> get_growth_info(vector<cntNode> v, int N){
 
     vector<growthInfo> rVector;
 
+    //calculates initial angles, magninute and dx,dy
     const int size = v.size()-1;
     for(int i = N-1; i>=0; i--){
         growthInfo temp;
@@ -340,8 +356,6 @@ vector<growthInfo> get_growth_info(vector<cntNode> v, int N){
         temp.y_offset = temp.v * sin(temp.theta);
 
         temp.x_offset = temp.v * cos(temp.theta);
-
-        cout << temp.x_offset << " " << temp.y_offset << endl;
         
         rVector.push_back(temp);
     }
