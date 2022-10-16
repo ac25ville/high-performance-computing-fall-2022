@@ -193,6 +193,7 @@ void grow_tubes(vector<cntNode> readVector, cntNode* shm, int N, int C, int P, i
     for(int j=0; j<2; j++){
         vector<cntNode> initTemp;
         int readVectorSize = (int)readVector.size();
+        row = j * N;
         for(int column=start; column<end; column++){
             cntNode newNode;
             newNode.x = readVector.at(readVectorSize-(N+row)+column).x;
