@@ -34,6 +34,7 @@ void grow_tubes(vector<cntNode> readVector, cntNode* shm, int N, int C, int P, i
 int check_tubes(const cntNode * shm, int start, int end, int N, int C, int gen);
 double calculate_distance(cntNode a, cntNode b);
 void write_to_file(const cntNode * shm, string inputFile, int C, int N);
+cntNode calculate_new_node(cntNode a, cntNode b);
 std::chrono::time_point<std::chrono::steady_clock> get_time();
 std::chrono::duration<double> calculate_elapsed_time(std::chrono::time_point<std::chrono::steady_clock> start, std::chrono::time_point<std::chrono::steady_clock> end);
 
@@ -114,11 +115,12 @@ int main(int argc, char * argv[]){
     int tCount;
 
     vector<cntNode> shm(C*N);
-    cntNode * shmPointer = &shm.at(0);
+    cntNode * shmPointer = shm.data();
     
     int offset = N/P;
     int start;
     int end;
+    mutex m;
     
     cout << offset << endl;
     for(tCount = 0; tCount<P; tCount++){
@@ -128,7 +130,6 @@ int main(int argc, char * argv[]){
             end+=N%offset;
         }
         cout << start << " " << end << endl;
-        
         tg.push_back(thread(grow_tubes, readVector, shmPointer, N, C, P, start, end));
     }
 
@@ -136,8 +137,7 @@ int main(int argc, char * argv[]){
     //wait for threads
 
 
-    for (vector<thread>::iterator it = tg.begin() ; it != tg.end(); ++it)
-    {
+    for (vector<thread>::iterator it = tg.begin() ; it != tg.end(); ++it){
         it->join();
         cout << "Joined Thread" << endl;
     }
@@ -159,7 +159,6 @@ int main(int argc, char * argv[]){
     //write end
     writeTime = calculate_elapsed_time(startTime, endTime).count();
 
-    //free shared memory, detach, then ctl
 
     totalEndTime = get_time();
     totalTime = calculate_elapsed_time(totalStartTime, totalEndTime).count();
@@ -194,11 +193,10 @@ void grow_tubes(vector<cntNode> readVector, cntNode* shm, int N, int C, int P, i
     for(int j=0; j<2; j++){
         vector<cntNode> initTemp;
         int readVectorSize = (int)readVector.size();
-        row = j * N;
         for(int column=start; column<end; column++){
             cntNode newNode;
-            newNode.x = readVector.at(readVectorSize-(N+column+row)).x;
-            newNode.y = readVector.at(readVectorSize-(N+column+row)).y;
+            newNode.x = readVector.at(readVectorSize-(N+row)+column).x;
+            newNode.y = readVector.at(readVectorSize-(N+row)+column).y;
             
             initTemp.push_back(newNode);
         }
@@ -208,10 +206,10 @@ void grow_tubes(vector<cntNode> readVector, cntNode* shm, int N, int C, int P, i
     for(int j = 0; j<C; j++){
         row = j * N;
         vector<cntNode> temp;
+        cout << j << endl;
         for(column=start; column<end; column++){
-            cntNode newNode;
-            newNode.x = (*(shm + row + column)).x;
-            newNode.y = (*(shm + row + column)).y;
+            // cout <<(*(shm + row + column)).x << " " << (*(shm + row + column)).y << " | " << (*(shm + row + column + N)).x << " " << (*(shm + row + column + N)).y << endl;
+            cntNode newNode = calculate_new_node((*(shm + row + column)), (*(shm + row + column + N)));
 
             temp.push_back(newNode);
         }
@@ -222,7 +220,26 @@ void grow_tubes(vector<cntNode> readVector, cntNode* shm, int N, int C, int P, i
 
 }
 
+cntNode calculate_new_node(cntNode a, cntNode b){
+    cntNode newNode;
+    double x_0 = a.x;
+    double y_0 = a.y;
+    double x_1 = b.x;
+    double y_1 = b.y;
 
+    double theta = atan2(y_1, (x_1-x_0));
+
+    double v = sqrt((pow((x_1 - x_0), 2) + pow((y_1 - y_0), 2)));
+
+    double y_offset = v * sin(theta);
+
+    double x_offset = v * cos(theta);
+
+    newNode.x = b.x + x_offset;
+    newNode.x = b.y + y_offset;
+
+    return newNode;
+}
 
 int check_tubes(const cntNode * shm, int start, int end, int N, int C, int gen){
 
