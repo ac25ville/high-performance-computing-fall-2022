@@ -10,6 +10,8 @@
 #include <thread>
 #include <functional>
 #include <mutex>
+#include <boost/thread.hpp>
+#include <boost/thread/barrier.hpp>
 
 #include <unistd.h>
 #include <cstdlib>
@@ -28,10 +30,12 @@ struct growthInfo{
     double v;
 };
 
+boost::mutex m;
+
 vector<cntNode> read_file(string filename, int N);
 vector<growthInfo> get_growth_info(vector<cntNode> v, int N);
-void grow_tubes(vector<cntNode> readVector, cntNode* shm, growthInfo* g, int N, int C, int P, int start, int end);
-int check_tubes(const cntNode * shm, int start, int end, int N, int C, int gen);
+void grow_tubes(vector<cntNode> readVector, cntNode* shm, growthInfo* g, int N, int C, int P, int start, int end, boost::barrier& bar);
+int check_tubes(cntNode* shm, growthInfo* g, int start, int end, int N, int C, int gen);
 double calculate_distance(cntNode a, cntNode b);
 void write_to_file(const cntNode * shm, string inputFile, int C, int N);
 growthInfo calculate_new_node(cntNode a, cntNode b, growthInfo g);
@@ -58,8 +62,6 @@ int main(int argc, char * argv[]){
 
     std::chrono::time_point<std::chrono::steady_clock> startTime;
     std::chrono::time_point<std::chrono::steady_clock> endTime;
-
-    
 
     double readTime = 0;
     double multiProcessTime = 0;
@@ -96,6 +98,8 @@ int main(int argc, char * argv[]){
 
     vector<cntNode> shm(C*N);
     cntNode * shmPointer = shm.data();
+
+    boost::barrier bar(P);
     
     vector<growthInfo> growthInfoVector = get_growth_info(readVector, N);
     growthInfo * growthInfoPointer = growthInfoVector.data();
@@ -103,7 +107,7 @@ int main(int argc, char * argv[]){
     int offset = N/P;
     int start;
     int end;
-    mutex m;
+    
 
     for(tCount = 0; tCount<P; tCount++){
         start = offset*(tCount);
@@ -111,7 +115,7 @@ int main(int argc, char * argv[]){
         if(end == (N-(N%offset)) && offset%N!=0){
             end+=N%offset;
         }
-        tg.push_back(thread(grow_tubes, readVector, shmPointer, growthInfoPointer, N, C, P, start, end));
+        tg.push_back(thread(grow_tubes, readVector, shmPointer, growthInfoPointer, N, C, P, start, end, std::ref(bar)));
     }
 
     cout << "Cleaning up..." << endl;
@@ -140,7 +144,6 @@ int main(int argc, char * argv[]){
     //write end
     writeTime = calculate_elapsed_time(startTime, endTime).count();
 
-
     totalEndTime = get_time();
     totalTime = calculate_elapsed_time(totalStartTime, totalEndTime).count();
 
@@ -159,13 +162,13 @@ int main(int argc, char * argv[]){
 
 //grow and check
 
-void grow_tubes(vector<cntNode> readVector, cntNode* shm, growthInfo* g, int N, int C, int P, int start, int end){
+void grow_tubes(vector<cntNode> readVector, cntNode* shm, growthInfo* g, int N, int C, int P, int start, int end, boost::barrier& bar){
 
-    // if(start == 0){
-    //     for(auto i:infoVector){
-    //         std::cout << " Theta: " << i.theta << ", Magnitude: " << i.v << endl;
-    //     }
-    // }
+    if(start == 0){
+        for(int i = 0; i<N; i++){
+            std::cout << " Theta: " << (*(g+i)).theta << ", Magnitude: " << (*(g+i)).v << endl;
+        }
+    }
 
     int column;
     int row;
@@ -187,23 +190,59 @@ void grow_tubes(vector<cntNode> readVector, cntNode* shm, growthInfo* g, int N, 
     for(int j = 0; j<C-1; j++){
         row = j * N;
         vector<cntNode> temp;
-        cout << row << endl;
         for(column=start; column<end; column++){
-            calculate_new_node((*(shm + column)), (*(shm + column + N)), (*(g+column)));         
+            calculate_new_node((*(shm + column)), (*(shm + column + N)), (*(g+column))); //calculates trig everytime, serving the expressed intention of taking time as stated in class         
             cntNode newNode;
 
-            newNode.x = (*(shm + column + row + N)).x + (*(g+column)).x_offset;
+            //still adding x & y offset
+            newNode.x = (*(shm + column + row + N)).x + (*(g+column)).x_offset; 
             newNode.y = (*(shm + column + row + N)).y + (*(g+column)).y_offset;
-
 
             temp.push_back(newNode);
         }
         if((row+start+(N*2))<C*N)
             std::copy(temp.begin(),temp.end(), shm+(row+start+(N*2)));
-               
-        // check_tubes(start, end, shm, N, C, j);
+        
+        bar.wait();
+        boost::lock_guard<boost::mutex> locker(m);      
+        check_tubes(shm, g, start, end, N, C, j);
+
     }
 
+}
+
+
+
+int check_tubes(cntNode* shm, growthInfo* g, int start, int end, int N, int C, int gen){
+
+    int row;
+    int column;
+    for(column = start; column<end; column++){
+        for(int j = 1; j<gen+1; j++){
+            cntNode checkVal = *(shm + ((gen+1) * N) + column);
+            row = j * N;
+            if(
+                calculate_distance(*(shm + row + (column -1)), checkVal) < 5e-08 
+                || 
+                calculate_distance(*(shm + row + (column +1)), checkVal) < 5e-08
+            ){
+
+                if(calculate_distance(*(shm + row + (column +1)), checkVal) < 5e-08){
+                    g[column+1].x_offset = 0;
+                } else if(calculate_distance(*(shm + row + (column -1)), checkVal) < 5e-08) {
+                    g[column-1].x_offset = 0;
+                }
+                g[column].x_offset = 0;
+                
+            }
+        }
+    }
+
+    return 0;
+}
+
+double calculate_distance(cntNode a, cntNode b){
+    return sqrt((pow((a.x - b.x), 2) + pow((a.y - b.y), 2)));
 }
 
 growthInfo calculate_new_node(cntNode a, cntNode b, growthInfo g){
@@ -230,38 +269,6 @@ growthInfo calculate_new_node(cntNode a, cntNode b, growthInfo g){
     newGrowthInfo.y_offset = g.y_offset;
 
     return newGrowthInfo;
-}
-
-int check_tubes(const cntNode * shm, int start, int end, int N, int C, int gen){
-
-    int row;
-    int column;
-    for(column = start; column<end; column++){
-        for(int j = 1; j<gen+1; j++){
-            cntNode checkVal = *(shm + ((gen+1) * N) + column);
-            row = j * N;
-            if(
-                calculate_distance(*(shm + row + (column -1)), checkVal) < 5e-08 
-                || 
-                calculate_distance(*(shm + row + (column +1)), checkVal) < 5e-08
-            ){
-
-                // if(calculate_distance(*(shm + row + (column +1)), checkVal) < 5e-08){
-                //     shm[((gen+1) * N) + column+1].x_offset = 0;
-                // } else {
-                //     shm[((gen+1) * N) + column-1].x_offset = 0;
-                // }
-                // shm[((gen+1) * N) + column].x_offset = 0;
-                
-            }
-        }
-    }
-
-    return 0;
-}
-
-double calculate_distance(cntNode a, cntNode b){
-    return sqrt((pow((a.x - b.x), 2) + pow((a.y - b.y), 2)));
 }
 
 //initalization and write functions

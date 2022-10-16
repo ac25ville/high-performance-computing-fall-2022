@@ -6,7 +6,7 @@ all: homework3
 
 # HW 1
 homework3: homework3.o
-	g++  -pthread -lboost_thread -o homework3 homework3.o 
+	g++ -o homework3 homework3.o -pthread -lboost_thread
 
 homework3.o: homework3.cpp 
 	g++ ${OTHER_FLAGS} -Werror -Wall -c homework3.cpp
