@@ -6,7 +6,7 @@ all: homework4
 
 # HW 1
 homework4: homework4.o
-	mpic++ -o homework4 homework4.o -pthread -lboost_thread
+	mpic++ -o homework4 homework4.o
 
 homework4.o: homework4.cpp 
 	mpic++ ${OTHER_FLAGS} -Werror -Wall -c homework4.cpp

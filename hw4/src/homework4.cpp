@@ -15,7 +15,9 @@
 using namespace std;
 
 namespace acc9cm {
-    const int LINE_MESSAGE_SIZE = 200;
+    MPI_Datatype initPackageType;
+    MPI_Datatype cntNodeType;
+    MPI_Datatype growthInfoType;
 
     struct cntNode{
         double x;
@@ -69,8 +71,6 @@ int main(int argc, char * argv[]){
     int C = stoi(argv[3]);
     int P = stoi(argv[4]);
 
-    int packageSize;
-
     if (rank == 0){
         std::chrono::time_point<std::chrono::steady_clock> totalStartTime;
         std::chrono::time_point<std::chrono::steady_clock> totalEndTime;
@@ -78,13 +78,32 @@ int main(int argc, char * argv[]){
         totalStartTime = get_time(); //start timer
 
         //argument reads and conversions
+
+        // type creation
         
+        int blockcountCntNode[2] = {1,1};
+        MPI_Aint offsetsCntNode[2] = {offsetof(acc9cm::cntNode, x), offsetof(acc9cm::cntNode, y)};
+        MPI_Datatype dataTypeCntNode[2] = {MPI_DOUBLE, MPI_DOUBLE};
+        MPI_Type_create_struct(2, blockcountCntNode, offsetsCntNode, dataTypeCntNode, &(acc9cm::cntNodeType));
+        MPI_Type_commit(&(acc9cm::cntNodeType));
+
+        int blockcountGrowthInfo[4] = {1,1,1,1};
+        MPI_Aint offsetsGrowthInfo[4] = {offsetof(acc9cm::growthInfo, x_offset), offsetof(acc9cm::growthInfo, y_offset), offsetof(acc9cm::growthInfo, theta), offsetof(acc9cm::growthInfo, v)};
+        MPI_Datatype dataTypeGrowthInfo[4] = {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE};
+        MPI_Type_create_struct(4, blockcountGrowthInfo, offsetsGrowthInfo, dataTypeGrowthInfo, &(acc9cm::growthInfoType));
+        MPI_Type_commit(&(acc9cm::growthInfoType));
+
+        int blockcount[2] = {1,1};
+        MPI_Aint offsets[2] = {offsetof(acc9cm::initPackage, readVector), offsetof(acc9cm::initPackage, g)};
+        MPI_Datatype dataType[2] = {acc9cm::cntNodeType, acc9cm::growthInfoType};
+        MPI_Type_create_struct(2, blockcount, offsets, dataType, &(acc9cm::initPackageType));
+        MPI_Type_commit(&(acc9cm::initPackageType));
 
         //declare doubles to record times
         double readTime = 0;
         double writeTime = 0;
         double totalTime = 0;
-        double growthInfoTime = 0;
+        double multiProcessTime = 0;
 
         //read start
 
@@ -106,13 +125,7 @@ int main(int argc, char * argv[]){
 
         //growthInfo calc start
 
-        startTime = get_time();
-
         vector<acc9cm::growthInfo> growthInfoVector = get_growth_info(readVector, N);
-
-        endTime = get_time();
-
-        growthInfoTime = calculate_elapsed_time(startTime, endTime).count();
 
         //growthInfo calc end
 
@@ -123,7 +136,6 @@ int main(int argc, char * argv[]){
         }
 
         acc9cm::initPackage package;
-        packageSize = sizeof(package);
         package.readVector = readVector;
 
         package.g = growthInfoVector; //get the intial growth data
@@ -132,28 +144,32 @@ int main(int argc, char * argv[]){
 
         int offset = N/P;
         int start;
-        int end;  
-
+        // int end;  
+        startTime = get_time();
         for(nodeCount = 0; nodeCount<P; nodeCount++){
-            MPI_Send(package,		/* message buffer */
-		     1,            /* buffer size */
-		     sizeof(package),		/* data item is an integer */
-		     rank,	/* destination process rank */
-		     start,	/* user chosen message tag */
-		     MPI_COMM_WORLD);	/* default communicator */
+            start = offset*(nodeCount);
+            MPI_Send(&package,		        /* message buffer */
+		    1,                             /* buffer size */
+		    acc9cm::initPackageType,		/* data item is an integer */
+		    rank,	                        /* destination process rank */
+		    start,	                        /* user chosen message tag */
+		    MPI_COMM_WORLD);	            /* default communicator */
         }
 
         MPI_Barrier(MPI_COMM_WORLD);
 
-        //write start
-        startTime = get_time();
-        
-        write_to_file(shmPointer, filename, C, N);
-
         endTime = get_time();
+        multiProcessTime = calculate_elapsed_time(startTime, endTime).count();
 
-        //write end
-        writeTime = calculate_elapsed_time(startTime, endTime).count();
+        //write start
+        // startTime = get_time();
+        
+        // write_to_file(shmPointer, filename, C, N);
+
+        // endTime = get_time();
+
+        // //write end
+        // writeTime = calculate_elapsed_time(startTime, endTime).count();
 
         totalEndTime = get_time();
         totalTime = calculate_elapsed_time(totalStartTime, totalEndTime).count();
@@ -168,23 +184,16 @@ int main(int argc, char * argv[]){
         cout << " Write              | " << writeTime   << "s" << endl;
         cout << endl;
     } else {
-        //thread creation start
-        MPI_Barrier(MPI_COMM_WORLD);
 
         cout << "------------------------------" << endl;
         cout << "      Multi Process Start     " << endl;
         cout << "------------------------------" << endl << endl;
 
-        double multiProcessTime = 0;
-        startTime = get_time();
-
         vector<acc9cm::cntNode> shm(C*N);
         acc9cm::cntNode * shmPointer = shm.data(); //pointer to pre-allocated vector, to avoid resizing issues
-
-        boost::barrier bar(P); //boost barrier for check tubes portion, mutex declared on a global scope.
         
         // vector<acc9cm::growthInfo> growthInfoVector = get_growth_info(readVector, N); //get the intial growth data
-        acc9cm::growthInfo * growthInfoPointer = growthInfoVector.data(); //pointer to vector, same as shm
+        
 
         acc9cm::initPackage recvPackage;
 
@@ -197,13 +206,15 @@ int main(int argc, char * argv[]){
             //calculations as in previous assignment, but just with nodeCount instead of pCount or tCount
             MPI_Status status;
 
-            MPI_Recv(recvPackage,	/* message buffer           */
+            MPI_Recv(&recvPackage,	/* message buffer           */
 		    1,                      /* buffer size              */
-		    packageSize,		    /* data item is an integer  */
+		    acc9cm::initPackageType,/* data item is an integer  */
 		    MPI_ANY_SOURCE,	        /* destination process rank */
 		    MPI_ANY_TAG,	        /* user chosen message tag  */
 		    MPI_COMM_WORLD,         /* default communicator     */
             &status);        
+
+            acc9cm::growthInfo * g = recvPackage.g.data(); //pointer to vector
 
             start = offset*(nodeCount);
             int sourceCaught = status.MPI_SOURCE;
@@ -211,13 +222,18 @@ int main(int argc, char * argv[]){
             if(end == (N-(N%offset)) && offset%N!=0){
                 end+=N%offset;
             }
-            //init thread directly into thread group
-            grow_tubes(readVector, shmPointer, growthInfoPointer, N, C, P, start, end, std::ref(bar));
-            //need to wrap bar in reference for it to pass correctly
+
+            grow_tubes(recvPackage.readVector, shmPointer, g, N, C, P, start, end);
+
+            MPI_Send(&shm,		/* message buffer */
+		    shm.size(),            /* buffer size */
+		    acc9cm::cntNodeType,		/* data item is an integer */
+		    sourceCaught,	/* destination process rank */
+		    start,	/* user chosen message tag */
+		    MPI_COMM_WORLD);	/* default communicator */
         }
 
-        endTime = get_time();
-        multiProcessTime = calculate_elapsed_time(startTime, endTime).count();
+        
 
         cout << "------------------------------" << endl;
         cout << "       Multi Process End      " << endl;
