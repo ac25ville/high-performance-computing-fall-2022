@@ -57,8 +57,6 @@ int main(int argc, char * argv[]){
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    cout << rank << endl;
-
     //start and end time for each subsection of the program
     std::chrono::time_point<std::chrono::steady_clock> startTime;
     std::chrono::time_point<std::chrono::steady_clock> endTime;
@@ -75,8 +73,6 @@ int main(int argc, char * argv[]){
         std::chrono::time_point<std::chrono::steady_clock> totalEndTime;
 
         totalStartTime = get_time(); //start timer
-
-        //argument reads and conversions
 
         // type creation
         
@@ -120,8 +116,6 @@ int main(int argc, char * argv[]){
         vector<acc9cm::cntNode> shmTmp(C*N);
         vector<vector<acc9cm::cntNode>> shmSplice;
 
-        // int offset = N/P;
-        // int start;
         startTime = get_time();
         for(nodeCount = 1; nodeCount<P; nodeCount++){
             MPI_Send(readVector.data(),		        /* message buffer */
@@ -130,7 +124,6 @@ int main(int argc, char * argv[]){
 		    nodeCount,	                        /* destination process rank */
 		    nodeCount,	                        /* user chosen message tag */
 		    MPI_COMM_WORLD);	            /* default communicator */
-            cout << "after send" << endl;
         }
 
         MPI_Barrier(MPI_COMM_WORLD);
@@ -146,12 +139,9 @@ int main(int argc, char * argv[]){
 		    MPI_COMM_WORLD,         /* default communicator     */
             &status);
             shmSplice.push_back(shmTmp);
-            // cout << status.MPI_SOURCE << endl;
         }
 
         for(auto v:shmSplice){
-            // cout << v.size() << endl;
-            cout << shm.size() << endl;
             for(long unsigned int i = 0; i<v.size(); i++){
                 if(v.at(i).x!=0){
                     shm[i] = v.at(i);
@@ -172,7 +162,6 @@ int main(int argc, char * argv[]){
 
         endTime = get_time();
 
-        //write end
         writeTime = calculate_elapsed_time(startTime, endTime).count();
 
         totalEndTime = get_time();
@@ -217,16 +206,13 @@ int main(int argc, char * argv[]){
 
         vector<acc9cm::growthInfo> growthInfoVector = get_growth_info(readVector, N); //get the intial growth data
         acc9cm::growthInfo * g = growthInfoVector.data(); //pointer to vector
-
         
-        int sourceCaught = status.MPI_SOURCE;
         int tag = status.MPI_TAG;
         start = offset*(tag-1);
         end = offset*(tag);
         if(end == (N-(N%offset)) && offset%N!=0){
             end+=N%offset;
         }
-        cout << "N: " << N << " C: " << C << " P: " << P << " start: " << start << " end: " << end << endl;
         grow_tubes(readVector, shmPointer, g, N, C, P, start, end);
 
         MPI_Barrier(MPI_COMM_WORLD);
@@ -237,10 +223,7 @@ int main(int argc, char * argv[]){
         0,	                    /* destination process rank */
         start,	                /* user chosen message tag */
         MPI_COMM_WORLD);	    /* default communicator */
-        cout << sourceCaught << endl;
     }
-
-    cout << rank << endl;
     
     MPI_Finalize();
 
@@ -253,7 +236,6 @@ void grow_tubes(vector<acc9cm::cntNode> readVector, acc9cm::cntNode* shm, acc9cm
 
     //print inital values as asked for previously, decided not to change this functionality since it could be useful
 
-    std::cout << "init values in grow tubes" << endl;
     // if(start == 0){
     //     for(int i = 0; i<N; i++){
     //         std::cout << " Theta: " << (*(g+i)).theta << ", Magnitude: " << (*(g+i)).v << endl;
