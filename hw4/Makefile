@@ -12,4 +12,4 @@ clean:
 	@for dir in $(SUBDIRS); do \
 		$(MAKE) -C $$dir clean; \
 	done
-	rm -r ./.vscode core.*
+	rm -r ./.vscode core.* *.csv
