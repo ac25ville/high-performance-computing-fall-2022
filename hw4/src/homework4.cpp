@@ -12,6 +12,9 @@
 #include <unistd.h>
 #include <cstdlib>
 
+#define DEBUG_PRINT 0
+#define ANALYSIS_PRINT 1
+
 using namespace std;
 
 namespace acc9cm {
@@ -31,8 +34,6 @@ namespace acc9cm {
         double v;
     };
 }
-
-
 
 vector<acc9cm::cntNode> read_file(string filename, int N);
 vector<acc9cm::growthInfo> get_growth_info(vector<acc9cm::cntNode> v, int N);
@@ -82,22 +83,24 @@ int main(int argc, char * argv[]){
         MPI_Type_create_struct(2, blockcountCntNode, offsetsCntNode, dataTypeCntNode, &(acc9cm::cntNodeType));
         MPI_Type_commit(&(acc9cm::cntNodeType));
 
-        //declare doubles to record times
-        double readTime = 0;
-        double writeTime = 0;
         double totalTime = 0;
         double multiProcessTime = 0;
-
+        //declare doubles to record times
+#if !ANALYSIS_PRINT
+        double readTime = 0;
+        double writeTime = 0;
+#endif
         //read start
-
+#if !ANALYSIS_PRINT
         startTime = get_time();
+#endif
 
         vector<acc9cm::cntNode> readVector = read_file(filename, N);
 
+#if !ANALYSIS_PRINT
         endTime = get_time();
-
         readTime = calculate_elapsed_time(startTime, endTime).count();
-
+#endif
         //read end
 
         //error check read vector
@@ -108,15 +111,17 @@ int main(int argc, char * argv[]){
 
         int nodeCount;
 
+#if DEBUG_PRINT
         cout << "------------------------------" << endl;
         cout << "      Multi Process Start     " << endl;
         cout << "------------------------------" << endl << endl; 
-
+#endif
         vector<acc9cm::cntNode> shm(C*N);
         vector<acc9cm::cntNode> shmTmp(C*N);
         vector<vector<acc9cm::cntNode>> shmSplice;
 
         startTime = get_time();
+
         for(nodeCount = 1; nodeCount<P; nodeCount++){
             MPI_Send(readVector.data(),		        /* message buffer */
 		    acc9cm::READ_VECTOR_SIZE,                             /* buffer size */
@@ -149,33 +154,46 @@ int main(int argc, char * argv[]){
             }
         }
 
+#if DEBUG_PRINT
         cout << "------------------------------" << endl;
         cout << "       Multi Process End      " << endl;
         cout << "------------------------------" << endl << endl;
-
+#endif
         endTime = get_time();
         multiProcessTime = calculate_elapsed_time(startTime, endTime).count();
 
+#if !ANALYSIS_PRINT
         startTime = get_time();
-        
+#endif
+
         write_to_file(shm.data(), filename, C, N);
 
+#if !ANALYSIS_PRINT
         endTime = get_time();
-
         writeTime = calculate_elapsed_time(startTime, endTime).count();
-
+#endif
         totalEndTime = get_time();
         totalTime = calculate_elapsed_time(totalStartTime, totalEndTime).count();
-
+#if !ANALYSIS_PRINT
         cout << endl;
         cout << "--------------------------------------------" << endl;
-        cout << "              Timing Summary                " << endl;
+        cout << "            Timing Summary | P = " << P << "" << endl;
         cout << "--------------------------------------------" << endl;
         cout << " Total              | " << totalTime   << "s" << endl;
         cout << " Read               | " << readTime    << "s" << endl;
         cout << " Multi Proc Portion | " << multiProcessTime  << "s" << endl;
         cout << " Write              | " << writeTime   << "s" << endl;
         cout << endl;
+#endif
+
+#if ANALYSIS_PRINT
+    if(P == 2){
+        cout << N << endl;
+    }
+    cout << P << "," << totalTime << "," << multiProcessTime << endl;
+#endif
+
+
     } else {
 
         int blockcountCntNode[2] = {1,1};
@@ -234,13 +252,15 @@ int main(int argc, char * argv[]){
 
 void grow_tubes(vector<acc9cm::cntNode> readVector, acc9cm::cntNode* shm, acc9cm::growthInfo* g, int N, int C, int P, int start, int end){
 
+#if DEBUG_PRINT
     //print inital values as asked for previously, decided not to change this functionality since it could be useful
 
-    // if(start == 0){
-    //     for(int i = 0; i<N; i++){
-    //         std::cout << " Theta: " << (*(g+i)).theta << ", Magnitude: " << (*(g+i)).v << endl;
-    //     }
-    // }
+    if(start == 0){
+        for(int i = 0; i<N; i++){
+            std::cout << " Theta: " << (*(g+i)).theta << ", Magnitude: " << (*(g+i)).v << endl;
+        }
+    }
+#endif
 
     int column;
     int row;
@@ -361,11 +381,11 @@ vector<acc9cm::cntNode> read_file(string filename, int N){
         cout << "File invalid or does not exist." << endl;
         return cntVector;
     }
-
+#if DEBUG_PRINT
     cout << "------------------------------" << endl;
     cout << "          Read Start          " << endl;
     cout << "------------------------------" << endl << endl;
-
+#endif
     while(getline(fs, line)){
         istringstream ss(line);
         string substring;
@@ -386,20 +406,20 @@ vector<acc9cm::cntNode> read_file(string filename, int N){
     }
 
     fs.close();
-
+#if DEBUG_PRINT
     cout << "------------------------------" << endl;
     cout << "           Read End           " << endl;
     cout << "------------------------------" << endl << endl;
-
+#endif
     return cntVector;
 }
 
 vector<acc9cm::growthInfo> get_growth_info(vector<acc9cm::cntNode> v, int N){
-
+#if DEBUG_PRINT
     cout << "------------------------------" << endl;
     cout << "       Growth Info Start      " << endl;
     cout << "------------------------------" << endl << endl;
-
+#endif
     vector<acc9cm::growthInfo> rVector;
 
     //calculates initial angles, magninute and dx,dy
@@ -422,20 +442,20 @@ vector<acc9cm::growthInfo> get_growth_info(vector<acc9cm::cntNode> v, int N){
         
         rVector.push_back(temp);
     }
-
+#if DEBUG_PRINT
     cout << "------------------------------" << endl;
     cout << "       Growth Info End        " << endl;
     cout << "------------------------------" << endl << endl;
-
+#endif
     return rVector;
 }
 
 void write_to_file(const acc9cm::cntNode * shm, string inputFile, int C, int N){
-
+#if DEBUG_PRINT
     cout << "------------------------------" << endl;
     cout << "         Begin Write          " << endl;
     cout << "------------------------------" << endl << endl;
-
+#endif
     stringstream ss(inputFile);
     string substring;
     string cntCount;
@@ -451,10 +471,11 @@ void write_to_file(const acc9cm::cntNode * shm, string inputFile, int C, int N){
     }
 
     out.close();
-
+#if DEBUG_PRINT
     cout << "------------------------------" << endl;
     cout << "         End Write            " << endl;
     cout << "------------------------------" << endl << endl;
+#endif
 }
 
 //timing
