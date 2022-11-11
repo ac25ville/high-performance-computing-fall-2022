@@ -6,7 +6,9 @@
 
 * make
 
-* /path/to/homework4 /path/to/input_file N C P
+* mpirun -np P /path/to/homework4 /path/to/input_file N C P
+
+### Note both P values must be the same!
 
 # RUN ANALYSIS
 
