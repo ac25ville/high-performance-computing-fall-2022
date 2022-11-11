@@ -13,13 +13,12 @@ clean:
 	@for dir in $(SUBDIRS); do \
 		$(MAKE) -C $$dir clean; \
 	done
-	rm -r ./.vscode core.* *.csv
+	rm -r ./.vscode core.* *.csv analysis*
 
 max_parallel = 8
 c = 10000
 analysis: all
 	@cd src/ ;
-	@rm analysis*
 	@echo "Analysis Beginning" ;
 	@n=50 ; seed_file="../coordCSVs/"$$n"_Coord.csv"; while [[ $$n -le 200 ]] ; do \
 		# ((seed_file = "" + )) ; \
