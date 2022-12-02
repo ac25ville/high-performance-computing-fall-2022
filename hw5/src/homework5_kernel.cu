@@ -8,7 +8,6 @@
 #include <cuda_runtime.h>
 #include "helper_image.h"
 
-
 #define checkCudaErrors(err)           __checkCudaErrors (err, __FILE__, __LINE__)
 
 int main(int argc, char * argv[]){
@@ -33,44 +32,52 @@ int main(int argc, char * argv[]){
     strcpy(outFile, tempOut.c_str());
     
     unsigned int width, height;
-    unsigned int *dInImg = NULL;
-    unsigned int *dOutImg = NULL;
+    unsigned char *dInImg = NULL;
+    unsigned char *dOutImg = NULL;
     
-    unsigned int *hInImg = NULL;
-    unsigned int *hOutImg = NULL;
+    unsigned char *hInImg = NULL;
+    unsigned char *hOutImg = NULL;
     
     
     sdkLoadPGM(inFile, (unsigned char **) &hInImg, &width, &height);
     
     const unsigned int size = width * height;
     
-    err = cudaMalloc((void **)&dInImg, size);
+    hOutImg = (unsigned char *) malloc(size);
     
-    err = cudaMalloc((void **)&dOutImg, size);
+    err = cudaMalloc(&dInImg, size);
     
-    err = cudaMemcpy(dInImg, hInImg, size, cudaMemcpyHostToDevice);
+    err = cudaMalloc(&dOutImg, size);
     
-    if (err != cudaSuccess){
+    std::cout << width * height << std::endl;
+    std::cout << size << std::endl;
+    
+    
+    err = cudaMemcpy(dInImg, hInImg, width * height, cudaMemcpyHostToDevice);
+    
+     if (err != cudaSuccess){
         fprintf(stderr, "Failed to copy img from host to device (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
     
-    err = cudaMemcpy(dOutImg, hOutImg, size, cudaMemcpyDeviceToHost);
+    std::cout << "made it" << std::endl;
+    
+    err = cudaMemcpy((unsigned char *)hOutImg, (const unsigned char *)dOutImg, size, cudaMemcpyDeviceToHost);
     
     if (err != cudaSuccess){
         fprintf(stderr, "Failed to copy img from device to host (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
     
-    
-    sdkSavePGM(outFile, hOutImg, width, height);
+    sdkSavePGM((const char *)outFile, (unsigned char *)hOutImg, width, height);
     
     free(hInImg);
     free(hOutImg);
     
-    
     cudaFree(dInImg);
     cudaFree(dOutImg);
+    
+    err = cudaDeviceReset();
     
 
     return 0;
