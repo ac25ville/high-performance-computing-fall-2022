@@ -10,14 +10,21 @@
 
 #define checkCudaErrors(err)           __checkCudaErrors (err, __FILE__, __LINE__)
 
-#define THREAD_COUNT 128
+
+//#define THREAD_COUNT 128
 
 __global__ void
-medianFilter(const unsigned char *inImg, unsigned char *outImg, unsigned int filterSize, unsigned int imgSize){
-    unsigned int p = (blockIdx.x * blockDim.x + threadIdx.x) + (blockIdx.y * blockDim.y + threadIdx.y);
+medianFilter(const unsigned char *inImg, unsigned char *outImg, unsigned int width, unsigned int height, unsigned int filterSize){
+    unsigned int xPos = (blockIdx.x * blockDim.x) + threadIdx.x;
+    unsigned int yPos = (blockIdx.y * blockDim.y) + threadIdx.y;
     
-    if(p < imgSize){
-        memcpy(outImg, inImg, imgSize);
+    if(xPos < width && yPos < height){
+        for(unsigned int i = 0; i<filterSize; i++){
+            for(unsigned int j = 0; j<filterSize; j++){
+                //tmp array
+            }
+        }
+        outImg[yPos*height+xPos] = inImg[yPos*height+xPos];
     }
 }
 
@@ -82,8 +89,10 @@ int main(int argc, char * argv[]){
         exit(EXIT_FAILURE);
     }
     
+    dim3 block(8, 8, 1);
+    dim3 grid(64,64,1);
     
-    medianFilter<<<size/THREAD_COUNT,THREAD_COUNT>>>(dInImg, dOutImg, filterSize, size);
+    medianFilter<<<grid,block>>>(dInImg, dOutImg, width, height, filterSize);
     
     err = cudaGetLastError();
 
