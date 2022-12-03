@@ -79,7 +79,8 @@ EXTRA_LDFLAGS   ?=
 
 # CUDA code generation flags
 GENCODE_SM35    := -gencode arch=compute_35,code=sm_35
-GENCODE_FLAGS   := $(GENCODE_SM35)
+GENCODE_SM61    := -gencode arch=compute_61,code=sm_61
+GENCODE_FLAGS   := $(GENCODE_SM35) $(GENCODE_SM61)
 
 # OS-specific build flags
 ifneq ($(DARWIN),) 

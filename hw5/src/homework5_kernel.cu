@@ -10,6 +10,17 @@
 
 #define checkCudaErrors(err)           __checkCudaErrors (err, __FILE__, __LINE__)
 
+#define THREAD_COUNT 128
+
+__global__ void
+medianFilter(const unsigned char *inImg, unsigned char *outImg, unsigned int filterSize, unsigned int imgSize){
+    unsigned int p = (blockIdx.x * blockDim.x + threadIdx.x) + (blockIdx.y * blockDim.y + threadIdx.y);
+    
+    if(p < imgSize){
+        memcpy(outImg, inImg, imgSize);
+    }
+}
+
 int main(int argc, char * argv[]){
     cudaError_t err = cudaSuccess;
     
@@ -72,7 +83,16 @@ int main(int argc, char * argv[]){
     }
     
     
-    err = cudaMemcpy(hOutImg, dInImg, size, cudaMemcpyDeviceToHost);
+    medianFilter<<<size/THREAD_COUNT,THREAD_COUNT>>>(dInImg, dOutImg, filterSize, size);
+    
+    err = cudaGetLastError();
+
+    if (err != cudaSuccess){
+        fprintf(stderr, "Failed to launch medianFilter kernel (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+    
+    err = cudaMemcpy(hOutImg, dOutImg, size, cudaMemcpyDeviceToHost);
     
     if (err != cudaSuccess){
         fprintf(stderr, "Failed to copy img from device to host (error code %s)!\n", cudaGetErrorString(err));
