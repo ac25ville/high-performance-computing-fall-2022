@@ -6,6 +6,8 @@
 #include <cmath>
 #include <string.h>
 #include <stdlib.h>
+#include <chrono>
+#include <ctime>
 #include <cuda_runtime.h>
 #include "helper_image.h"
 
@@ -14,9 +16,28 @@
 //#define THREAD_COUNT 128
 #define MAX_SIZE 225
 
-__device__ int 
-compare (const void * a, const void * b) {
-   return ( *(int*)a - *(int*)b );
+void goldMedianFilter(const unsigned char *inImg, unsigned char *outImg, unsigned int width, unsigned int height, unsigned int filterSize, unsigned int imgSize){
+    
+    unsigned int filterRadius = filterSize/2;
+    
+    std::vector<unsigned char> in(inImg, inImg+imgSize); 
+    for(unsigned int p=0; p<in.size(); p++){ //pixel
+        std::vector<unsigned char> sortable;
+        for(unsigned int j=0; j<filterSize; j++){ //row
+            for(unsigned int k=0; k<filterSize; k++){ // column
+                if((p*j)-filterRadius<height && (p+k)-filterRadius<width){
+                    sortable.push_back(in.at((p-filterRadius)*j + (p+k-filterRadius)));
+                }
+            }
+        }
+        std::sort(sortable.begin(), sortable.end());
+        const unsigned int sortableSize = sortable.size();
+        if(sortableSize>0)
+            outImg[p] = sortable.at(sortableSize/2);
+        else
+            outImg[p] = in.at(p);
+    }
+        
 }
 
 __global__ void
@@ -48,12 +69,15 @@ medianFilter(const unsigned char *inImg, unsigned char *outImg, unsigned int wid
            }
             sortable[j + 1] = key;
         }
-        outImg[xPos*width+yPos] = sortable[filterSize*filterSize/2];
+        outImg[xPos*width+yPos] = sortable[(filterSize*filterSize)/2];
     }
 }
 
 int main(int argc, char * argv[]){
     cudaError_t err = cudaSuccess;
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
     
     if(argc<4){
         std::cout << "Not enough arguments. Format:" << std::endl;
@@ -66,12 +90,16 @@ int main(int argc, char * argv[]){
     unsigned int filterSize = std::stoi(argv[1]);
     std::string tempIn = argv[2];
     std::string tempOut = argv[3];
+    std::string tempGold = "gold_";
+    std::string tempOutGold = tempGold+tempOut;
     
     char inFile[tempIn.length()+1];
     char outFile[tempOut.length()+1];
+    char goldOutFile[tempOutGold.length()+1];
     
     strcpy(inFile, tempIn.c_str());
     strcpy(outFile, tempOut.c_str());
+    strcpy(goldOutFile, tempOutGold.c_str());
     
     unsigned int width, height;
     unsigned char *dInImg = NULL;
@@ -79,6 +107,7 @@ int main(int argc, char * argv[]){
     
     unsigned char *hInImg = NULL;
     unsigned char *hOutImg = NULL;
+    unsigned char *goldOutImg = NULL;
     
     
     sdkLoadPGM(inFile, &hInImg, &width, &height);
@@ -86,6 +115,8 @@ int main(int argc, char * argv[]){
     const unsigned int size = width * height * sizeof(unsigned char);
     
     hOutImg = (unsigned char *) malloc(size);
+    
+    goldOutImg = (unsigned char *) malloc(size);
     
     err = cudaMalloc(&dInImg, size);
     
@@ -115,7 +146,11 @@ int main(int argc, char * argv[]){
     dim3 block(8, 8, 1);
     dim3 grid(64,64,1);
     
+    cudaEventRecord(start);
+    
     medianFilter<<<grid,block>>>(dInImg, dOutImg, width, height, filterSize);
+    
+    cudaEventRecord(stop);
     
     err = cudaGetLastError();
 
@@ -130,18 +165,26 @@ int main(int argc, char * argv[]){
         fprintf(stderr, "Failed to copy img from device to host (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
+   
+    cudaEventSynchronize(stop);
     
-   // memcpy(hOutImg, hInImg, size);
+    goldMedianFilter(hInImg, goldOutImg, width, height, filterSize, size);
+    
+    float milliseconds = 0;
+    cudaEventElapsedTime(&milliseconds, start, stop);
     
     sdkSavePGM(outFile, hOutImg, width, height);
     
-    std::cout << "made it" << std::endl;
+    sdkSavePGM(goldOutFile, goldOutImg, width, height);
+    
+    std::cout << milliseconds << std::endl;
     
     cudaFree(dInImg);
     cudaFree(dOutImg);
     
     free(hInImg);
     free(hOutImg);
+    free(goldOutImg);
     
     err = cudaDeviceReset();
     
