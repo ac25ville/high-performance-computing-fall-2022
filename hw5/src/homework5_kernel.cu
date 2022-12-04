@@ -5,33 +5,50 @@
 #include <iostream>
 #include <cmath>
 #include <string.h>
+#include <stdlib.h>
 #include <cuda_runtime.h>
 #include "helper_image.h"
 
 #define checkCudaErrors(err)           __checkCudaErrors (err, __FILE__, __LINE__)
 
-
 //#define THREAD_COUNT 128
+#define MAX_SIZE 225
+
+__device__ int 
+compare (const void * a, const void * b) {
+   return ( *(int*)a - *(int*)b );
+}
 
 __global__ void
-medianFilter(const unsigned char *inImg, unsigned char *outImg, unsigned char *sortable, unsigned int width, unsigned int height, unsigned int filterSize){
+medianFilter(const unsigned char *inImg, unsigned char *outImg, unsigned int width, unsigned int height, unsigned int filterSize){
     unsigned int xPos = (blockIdx.x * blockDim.x) + threadIdx.x;
     unsigned int yPos = (blockIdx.y * blockDim.y) + threadIdx.y;
     
     unsigned int filterRadius = filterSize/2;
-    
+    unsigned char sortable[MAX_SIZE];
     if(xPos < width && yPos < height){
         unsigned int count = 0;
         for(unsigned int i = 0; i<filterSize; i++){
             for(unsigned int j = 0; j<filterSize; j++){
-                sortable[count] = 
-                inImg[(xPos-filterRadius+i)*width+(yPos-filterRadius+j)];
-                count++;
-                
+                if(xPos-filterRadius+i < width && yPos-filterRadius+j < height){
+                    sortable[count] = 
+                    inImg[(xPos-filterRadius+i)*width+(yPos-filterRadius+j)];
+                    count++;
+                }
             }
         }
-        //outImg[xPos*width+yPos] = sortable[0];
-        memcpy((outImg + xPos*width+yPos), (sortable+0), sizeof(unsigned char));
+        //printf("Count %d", count);
+        int i, key, j;
+        for (i = 1; i < filterSize*filterSize; i++){
+            key = sortable[i];
+            j = i - 1;
+            while (j >= 0 && sortable[j] > key){
+                sortable[j + 1] = sortable[j];
+                j = j - 1;
+           }
+            sortable[j + 1] = key;
+        }
+        outImg[xPos*width+yPos] = sortable[filterSize*filterSize/2];
     }
 }
 
@@ -59,7 +76,6 @@ int main(int argc, char * argv[]){
     unsigned int width, height;
     unsigned char *dInImg = NULL;
     unsigned char *dOutImg = NULL;
-    unsigned char *dSortable = NULL;
     
     unsigned char *hInImg = NULL;
     unsigned char *hOutImg = NULL;
@@ -68,7 +84,6 @@ int main(int argc, char * argv[]){
     sdkLoadPGM(inFile, &hInImg, &width, &height);
     
     const unsigned int size = width * height * sizeof(unsigned char);
-    
     
     hOutImg = (unsigned char *) malloc(size);
     
@@ -86,14 +101,6 @@ int main(int argc, char * argv[]){
         exit(EXIT_FAILURE);
     }
     
-    const unsigned int sortableSize = filterSize*filterSize;
-    err = cudaMalloc(&dSortable, sortableSize);
-    
-    if (err != cudaSuccess){
-        fprintf(stderr, "dSortable Alloc Failed (error code %s)!\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-    
     std::cout << width * height << std::endl;
     std::cout << size << std::endl;
     
@@ -108,7 +115,7 @@ int main(int argc, char * argv[]){
     dim3 block(8, 8, 1);
     dim3 grid(64,64,1);
     
-    medianFilter<<<grid,block>>>(dInImg, dOutImg, dSortable, width, height, filterSize);
+    medianFilter<<<grid,block>>>(dInImg, dOutImg, width, height, filterSize);
     
     err = cudaGetLastError();
 
@@ -132,7 +139,6 @@ int main(int argc, char * argv[]){
     
     cudaFree(dInImg);
     cudaFree(dOutImg);
-    cudaFree(dSortable);
     
     free(hInImg);
     free(hOutImg);
