@@ -25,13 +25,14 @@ void goldMedianFilter(const unsigned char *inImg, unsigned char *outImg, unsigne
         std::vector<unsigned char> sortable;
         for(unsigned int j=0; j<filterSize; j++){ //row
             for(unsigned int k=0; k<filterSize; k++){ // column
-                if((p*j)-filterRadius<height && (p+k)-filterRadius<width){
-                    sortable.push_back(in.at((p-filterRadius)*j + (p+k-filterRadius)));
+                if(p+((filterRadius)*j + (k-filterRadius))<imgSize && filterRadius*j<height && j*filterRadius>0 && k-filterRadius>0 && (k)-filterRadius<width){
+                    sortable.push_back(in.at(p+((filterRadius)*j + (k-filterRadius))));
                 }
             }
         }
         std::sort(sortable.begin(), sortable.end());
         const unsigned int sortableSize = sortable.size();
+        //std::cout << sortableSize << std::endl;
         if(sortableSize>0)
             outImg[p] = sortable.at(sortableSize/2);
         else
@@ -73,11 +74,35 @@ medianFilter(const unsigned char *inImg, unsigned char *outImg, unsigned int wid
     }
 }
 
+std::chrono::time_point<std::chrono::steady_clock> get_time(){
+    return std::chrono::steady_clock::now();
+}
+
+std::chrono::duration<double> calculate_elapsed_time(
+    std::chrono::time_point<std::chrono::steady_clock> start,
+    std::chrono::time_point<std::chrono::steady_clock> end
+    ){
+        return end - start;
+}
+
 int main(int argc, char * argv[]){
     cudaError_t err = cudaSuccess;
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
+    
+    std::chrono::time_point<std::chrono::steady_clock> begin;
+    std::chrono::time_point<std::chrono::steady_clock> end;
+    
+    std::chrono::time_point<std::chrono::steady_clock> overallBegin;
+    std::chrono::time_point<std::chrono::steady_clock> overallEnd;
+    
+    double totalTime = 0;
+    double goldTime = 0;
+    
+    
+    overallBegin = get_time();
+    
     
     if(argc<4){
         std::cout << "Not enough arguments. Format:" << std::endl;
@@ -168,16 +193,22 @@ int main(int argc, char * argv[]){
    
     cudaEventSynchronize(stop);
     
-    goldMedianFilter(hInImg, goldOutImg, width, height, filterSize, size);
-    
     float milliseconds = 0;
     cudaEventElapsedTime(&milliseconds, start, stop);
+    
+    begin = get_time();
+    
+    goldMedianFilter(hInImg, goldOutImg, width, height, filterSize, size);
+    
+    end = get_time();
+    
+    goldTime = calculate_elapsed_time(begin, end).count();
     
     sdkSavePGM(outFile, hOutImg, width, height);
     
     sdkSavePGM(goldOutFile, goldOutImg, width, height);
     
-    std::cout << milliseconds << std::endl;
+    std::cout << milliseconds/1000 << std::endl;
     
     cudaFree(dInImg);
     cudaFree(dOutImg);
@@ -188,6 +219,11 @@ int main(int argc, char * argv[]){
     
     err = cudaDeviceReset();
     
+    overallEnd = get_time();
+    
+    totalTime = calculate_elapsed_time(overallBegin, overallEnd).count();
+    
+    std::cout << "Total Time: " << totalTime << "s Gold Standard Time: " << goldTime << "s Kernel Time: " << milliseconds/1000 << "s" << std::endl;  
 
     return 0;
 }
