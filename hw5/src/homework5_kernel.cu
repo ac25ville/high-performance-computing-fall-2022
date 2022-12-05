@@ -203,7 +203,7 @@ int main(int argc, char * argv[]){
     
     sdkSavePGM(outFile, hOutImg, width, height);
     
-    sdkSavePGM(goldOutFile, goldOutImg, width, height);
+    //sdkSavePGM(goldOutFile, goldOutImg, width, height);
     
     unsigned int errorCount = 0;
     
