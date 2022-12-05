@@ -25,13 +25,14 @@ void goldMedianFilter(const unsigned char *inImg, unsigned char *outImg, unsigne
         std::vector<unsigned char> sortable;
         for(unsigned int j=0; j<filterSize; j++){ //row
             for(unsigned int k=0; k<filterSize; k++){ // column
-                if(p+((filterRadius)*j + (k-filterRadius))<imgSize && filterRadius*j<height && j*filterRadius>0 && k-filterRadius>0 && (k)-filterRadius<width){
-                    sortable.push_back(in.at(p+((filterRadius)*j + (k-filterRadius))));
+                if(p+((j-filterRadius)*width + (k-filterRadius)) < imgSize && p+((j-filterRadius)*width + (k-filterRadius)) > 0 ){
+                    sortable.push_back(in.at(p+((j-filterRadius)*width + (k-filterRadius))));
+                    
                 }
             }
         }
-        std::sort(sortable.begin(), sortable.end());
         const unsigned int sortableSize = sortable.size();
+        std::sort(sortable.begin(), sortable.end());
         //std::cout << sortableSize << std::endl;
         if(sortableSize>0)
             outImg[p] = sortable.at(sortableSize/2);
@@ -157,10 +158,6 @@ int main(int argc, char * argv[]){
         exit(EXIT_FAILURE);
     }
     
-    std::cout << width * height << std::endl;
-    std::cout << size << std::endl;
-    
-    
     err = cudaMemcpy(dInImg, hInImg, size, cudaMemcpyHostToDevice);
     
     if (err != cudaSuccess){
@@ -208,7 +205,16 @@ int main(int argc, char * argv[]){
     
     sdkSavePGM(goldOutFile, goldOutImg, width, height);
     
-    std::cout << milliseconds/1000 << std::endl;
+    unsigned int errorCount = 0;
+    
+    for(unsigned int i=0; i<size; i++){
+        if(hOutImg[i] != goldOutImg[i]){
+            //std::cout << (int)hOutImg[i] << "=/=" << (int)goldOutImg[i] << std::endl;
+            errorCount+=1;
+        }
+    }
+    
+    float percentageError = 100*((float)errorCount/(float)size);
     
     cudaFree(dInImg);
     cudaFree(dOutImg);
@@ -224,6 +230,7 @@ int main(int argc, char * argv[]){
     totalTime = calculate_elapsed_time(overallBegin, overallEnd).count();
     
     std::cout << "Total Time: " << totalTime << "s Gold Standard Time: " << goldTime << "s Kernel Time: " << milliseconds/1000 << "s" << std::endl;  
+    std::cout << "Percentage Error: " << percentageError << std::endl;
 
     return 0;
 }
