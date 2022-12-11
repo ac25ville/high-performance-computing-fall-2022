@@ -8,7 +8,6 @@
 #include <chrono>
 #include <ctime>
 #include <cuda_runtime.h>
-#include <cuda/barrier>
 
 #include <unistd.h>
 #include <cstdlib>
