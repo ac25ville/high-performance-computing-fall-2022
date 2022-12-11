@@ -106,7 +106,7 @@ int main(int argc, char * argv[]){
 
     cntNode * dShmPointer = NULL;
 
-    hShmPointer = malloc(sizeof(cntNode) * C*N);
+    hShmPointer = (cntNode *) malloc(sizeof(cntNode) * C*N);
 
     err = cudaMalloc(&dShmPointer, sizeof(cntNode)  * C*N);
 
@@ -119,21 +119,18 @@ int main(int argc, char * argv[]){
     growthInfo * growthInfoPointer = growthInfoVector.data(); //pointer to vector, same as shm
 
     int offset = N/B;
-    int start;
-    int end;
     
-    dim3 block(N/B,1,1);
+    dim3 block(offset,1,1);
     dim3 grid(N,1,1);
 
     cudaEventRecord(start);
-    //convert to kernel
-    grow_tubes<<<grid, block>>>(readVector, shmPointer, growthInfoPointer, N, C, B);
+    grow_tubes<<<grid, block>>>(readVector, dShmPointer, growthInfoPointer, N, C, B);
     cudaEventRecord(stop);
     cudaEventSynchronize(stop);
     cudaEventElapsedTime(&multiProcessTime, start, stop);
     multiProcessTime /= 1000;
 
-    err = cudaMemcpy(dShmPointer, hShmPointer, sizeof(cntNode) * C*N, cudaMemcpyHostToDevice);
+    err = cudaMemcpy(dShmPointer, hShmPointer, sizeof(cntNode) * C*N, cudaMemcpyDeviceToHost);
     
     if (err != cudaSuccess){
         fprintf(stderr, "Failed to copy data from device to host (error code %s)!\n", cudaGetErrorString(err));
@@ -180,7 +177,8 @@ int main(int argc, char * argv[]){
 
 //grow and check
 
-void grow_tubes(vector<cntNode> readVector, cntNode* shm, growthInfo* g, int N, int C, int B){
+__global__ void 
+grow_tubes(vector<cntNode> readVector, cntNode* shm, growthInfo* g, int N, int C, int B){
 
     //print inital values as asked for previously, decided not to change this functionality since it oucld be useful
     /* if(start == 0){
@@ -189,7 +187,8 @@ void grow_tubes(vector<cntNode> readVector, cntNode* shm, growthInfo* g, int N, 
         }
     */ 
 
-   const unsigned int column = (blockIdx.x * blockDim.x) + threadIdx.x;
+    const unsigned int column = (blockIdx.x * blockDim.x) + threadIdx.x;
+    const unsigned int readVectorSize = (int)readVector.size();
     int row;
     /*
     for(int j=0; j<2; j++){
@@ -207,16 +206,16 @@ void grow_tubes(vector<cntNode> readVector, cntNode* shm, growthInfo* g, int N, 
     }
     */
     cntNode newNode_a;
-    newNode.x = readVector.at(readVectorSize-(column)).x;
-    newNode.y = readVector.at(readVectorSize-(column)).y;
+    newNode_a.x = readVector.at(readVectorSize-(column)).x;
+    newNode_a.y = readVector.at(readVectorSize-(column)).y;
     
-    shm[column] = newNode;
+    shm[column] = newNode_a;
 
     cntNode newNode_b;
-    newNode.x = readVector.at(readVectorSize-(N+column)).x;
-    newNode.y = readVector.at(readVectorSize-(N+column)).y;
+    newNode_b.x = readVector.at(readVectorSize-(N+column)).x;
+    newNode_b.y = readVector.at(readVectorSize-(N+column)).y;
     
-    shm[N+column] = newNode;
+    shm[N+column] = newNode_b;
 
     
 
@@ -231,7 +230,9 @@ void grow_tubes(vector<cntNode> readVector, cntNode* shm, growthInfo* g, int N, 
         newNode.y = (*(shm + column + row + N)).y + (*(g+column)).y_offset;
 
         if((column+(N*2))<C*N) //to avoid seg fault; only need to insert above the 2 previous
-            std::copy(temp.begin(),temp.end(), shm+(row+start+(N*2)));
+            shm[row+column+(N*2)] = newNode;
+        
+        
         
         //maybe barrier? We are going to try hx
         // check_tubes(shm, g, start, end, N, C, j); //check tubes
