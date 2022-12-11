@@ -245,14 +245,14 @@ grow_tubes(cntNode* readVector, const unsigned int readVectorSize, cntNode* shm,
     }
     */
     cntNode newNode_a;
-    newNode_a.x = (*(readVector + (readVectorSize-(column)))).x;
-    newNode_a.y = (*(readVector + (readVectorSize-(column)))).y;
+    newNode_a.x = readVector[readVectorSize-(column)].x;
+    newNode_a.y = readVector[readVectorSize-(column)].y;
     
     shm[column] = newNode_a;
 
     cntNode newNode_b;
-    newNode_b.x = (*(readVector + (readVectorSize-(N+column)))).x;
-    newNode_b.y = (*(readVector + (readVectorSize-(N+column)))).y;
+    newNode_b.x = readVector[readVectorSize-(N+column)].x;
+    newNode_b.y = readVector[readVectorSize-(N+column)].y;
     
     shm[N+column] = newNode_b;
 
@@ -265,8 +265,8 @@ grow_tubes(cntNode* readVector, const unsigned int readVectorSize, cntNode* shm,
         cntNode newNode;
 
         //still adding x & y offset
-        newNode.x = (*(shm + column + row + N)).x + (*(g+column)).x_offset; 
-        newNode.y = (*(shm + column + row + N)).y + (*(g+column)).y_offset;
+        newNode.x = shm[column + row + N].x + g[column].x_offset; 
+        newNode.y = shm[column + row + N].y + g[column].y_offset;
 
         if((column+(N*2))<C*N) //to avoid seg fault; only need to insert above the 2 previous
             shm[row+column+(N*2)] = newNode;
