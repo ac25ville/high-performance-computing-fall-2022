@@ -32,7 +32,6 @@ struct growthInfo{
 //host functions
 vector<cntNode> read_file(string filename, int N);
 vector<growthInfo> get_growth_info(vector<cntNode> v, int N);
-double calculate_distance(cntNode a, cntNode b);
 void write_to_file(const cntNode * shm, string inputFile, int C, int N);
 std::chrono::time_point<std::chrono::steady_clock> get_time();
 std::chrono::duration<double> calculate_elapsed_time(std::chrono::time_point<std::chrono::steady_clock> start, std::chrono::time_point<std::chrono::steady_clock> end);
@@ -41,6 +40,7 @@ std::chrono::duration<double> calculate_elapsed_time(std::chrono::time_point<std
 __global__ void grow_tubes(cntNode* readVector, const unsigned int readVectorSize, cntNode* shm, growthInfo* g, int N, int C, int B);
 __device__ growthInfo calculate_new_node(cntNode a, cntNode b, growthInfo g);
 __device__ void check_tubes(cntNode* shm, growthInfo* g, int N, int C, int gen);
+__device__ double calculate_distance(cntNode a, cntNode b);
 
 int main(int argc, char * argv[]){
 
@@ -288,7 +288,8 @@ check_tubes(cntNode* shm, growthInfo* g, int N, int C, int gen){
 
 //distance between two nodes calc
 
-double calculate_distance(cntNode a, cntNode b){
+__device__ double 
+calculate_distance(cntNode a, cntNode b){
     return sqrt((pow((a.x - b.x), 2) + pow((a.y - b.y), 2)));
 }
 
