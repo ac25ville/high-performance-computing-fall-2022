@@ -94,6 +94,8 @@ int main(int argc, char * argv[]){
         exit(EXIT_FAILURE);
     }
 
+    cout << "super test" << endl;
+
     err = cudaMemcpy(dReadVector, &readVector[0], sizeof(growthInfo) * readVector.size(), cudaMemcpyHostToDevice);
 
     if (err != cudaSuccess){
@@ -125,8 +127,7 @@ int main(int argc, char * argv[]){
     cntNode * dShmPointer = NULL;
 
     hShmPointer = (cntNode *) malloc(sizeof(cntNode) * C*N);
-
-    cout << "super test" << endl;
+    
     err = cudaMalloc(&dShmPointer, sizeof(cntNode)  * C*N);
     
 
@@ -140,8 +141,6 @@ int main(int argc, char * argv[]){
     growthInfo * dGrowthInfoPointer = NULL;
 
     err = cudaMalloc(&dGrowthInfoPointer, sizeof(growthInfo) * growthInfoVector.size());
-
-    
 
     if (err != cudaSuccess){
         fprintf(stderr, "dGrowthInfoPointer Alloc Failed (error code %s)!\n", cudaGetErrorString(err));
