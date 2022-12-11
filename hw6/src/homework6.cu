@@ -29,15 +29,18 @@ struct growthInfo{
     double v;
 };
 
+//host functions
 vector<cntNode> read_file(string filename, int N);
 vector<growthInfo> get_growth_info(vector<cntNode> v, int N);
-void grow_tubes(vector<cntNode> readVector, cntNode* shm, growthInfo* g, int N, int C, int B);
 int check_tubes(cntNode* shm, growthInfo* g, int start, int end, int N, int C, int gen);
 double calculate_distance(cntNode a, cntNode b);
 void write_to_file(const cntNode * shm, string inputFile, int C, int N);
 growthInfo calculate_new_node(cntNode a, cntNode b, growthInfo g);
 std::chrono::time_point<std::chrono::steady_clock> get_time();
 std::chrono::duration<double> calculate_elapsed_time(std::chrono::time_point<std::chrono::steady_clock> start, std::chrono::time_point<std::chrono::steady_clock> end);
+
+//kernel functions
+__global__ void grow_tubes(vector<cntNode> readVector, cntNode* shm, growthInfo* g, int N, int C, int B);
 
 int main(int argc, char * argv[]){
 
@@ -72,7 +75,7 @@ int main(int argc, char * argv[]){
 
     //declare doubles to record times
     double readTime = 0;
-    double multiProcessTime = 0;
+    float  multiProcessTime = 0;
     double writeTime = 0;
     double totalTime = 0;
 
@@ -147,7 +150,7 @@ int main(int argc, char * argv[]){
     //write start
     startTime = get_time();
     
-    write_to_file(shmPointer, filename, C, N);
+    write_to_file(hShmPointer, filename, C, N);
 
     endTime = get_time();
 
