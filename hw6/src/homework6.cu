@@ -32,15 +32,16 @@ struct growthInfo{
 //host functions
 vector<cntNode> read_file(string filename, int N);
 vector<growthInfo> get_growth_info(vector<cntNode> v, int N);
-int check_tubes(cntNode* shm, growthInfo* g, int start, int end, int N, int C, int gen);
 double calculate_distance(cntNode a, cntNode b);
 void write_to_file(const cntNode * shm, string inputFile, int C, int N);
-growthInfo calculate_new_node(cntNode a, cntNode b, growthInfo g);
+
 std::chrono::time_point<std::chrono::steady_clock> get_time();
 std::chrono::duration<double> calculate_elapsed_time(std::chrono::time_point<std::chrono::steady_clock> start, std::chrono::time_point<std::chrono::steady_clock> end);
 
 //kernel functions
 __global__ void grow_tubes(cntNode* readVector, const unsigned int readVectorSize, cntNode* shm, growthInfo* g, int N, int C, int B);
+__device__ growthInfo calculate_new_node(cntNode a, cntNode b, growthInfo g);
+__device__ void check_tubes(cntNode* shm, growthInfo* g, int N, int C, int gen);
 
 int main(int argc, char * argv[]){
 
@@ -257,18 +258,19 @@ grow_tubes(cntNode* readVector, const unsigned int readVectorSize, cntNode* shm,
 }
 
 __device__ void 
-check_tubes(cntNode* shm, growthInfo* g, int start, int end, int N, int C, int gen){
+check_tubes(cntNode* shm, growthInfo* g, int N, int C, int gen){
 
     int row;
     int column;
-    for(column = start; column<end; column++){
+    for(column = 0; column<N; column++){
         for(int j = 1; j<gen+1; j++){
             cntNode checkVal = *(shm + ((gen+1) * N) + column);
             row = j * N;
             if(
-                calculate_distance(*(shm + row + (column -1)), checkVal) < 5e-08 
+                (calculate_distance(*(shm + row + (column -1)), checkVal) < 5e-08 
                 || 
-                calculate_distance(*(shm + row + (column +1)), checkVal) < 5e-08
+                calculate_distance(*(shm + row + (column +1)), checkVal) < 5e-08)
+                && growthInfo[column].x_offset!=0
             ){
 
                 //sets offset to zero here, the calculate node function still does trig though.
