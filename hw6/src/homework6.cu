@@ -232,24 +232,8 @@ grow_tubes(cntNode* readVector, const unsigned int readVectorSize, cntNode* shm,
         }
     */ 
 
-    // const unsigned int column = ( (blockIdx.x  * blockDim.x) / gridDim.x ) + threadIdx.x;
-    const unsigned int column = threadIdx.x;
+    const unsigned int column = ( (blockIdx.x  * blockDim.x) ) + threadIdx.x;
     int row;
-    /*
-    for(int j=0; j<2; j++){
-        vector<cntNode> initTemp;
-        int readVectorSize = (int)readVector.size();
-        row = j * N;
-        for(int column=start; column<end; column++){
-            cntNode newNode;
-            newNode.x = readVector.at(readVectorSize-(N+row)+column).x;
-            newNode.y = readVector.at(readVectorSize-(N+row)+column).y;
-
-            initTemp.push_back(newNode);
-        }
-        std::copy(initTemp.begin(),initTemp.end(), shm + (start+row));
-    }
-    */
     if(column < N){
         printf("%d\n", blockIdx.x);
         cntNode newNode_a;
@@ -263,8 +247,6 @@ grow_tubes(cntNode* readVector, const unsigned int readVectorSize, cntNode* shm,
         newNode_b.y = readVector[readVectorSize-(N+column)].y;
         
         shm[N+column] = newNode_b;
-
-        
 
         for(int j = 0; j<C-1; j++){
             row = j * N;
