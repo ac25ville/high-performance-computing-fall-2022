@@ -249,14 +249,15 @@ grow_tubes(cntNode* readVector, const unsigned int readVectorSize, cntNode* shm,
                 shm[row+column+(N*2)] = newNode;
             
             //maybe barrier? We are going to try hx
-            // check_tubes(shm, g, start, end, N, C, j); //check tubes
+            check_tubes(shm, g, start, end, N, C, j); //check tubes
         }
     }
     
 
 }
 
-int check_tubes(cntNode* shm, growthInfo* g, int start, int end, int N, int C, int gen){
+__device__ void 
+check_tubes(cntNode* shm, growthInfo* g, int start, int end, int N, int C, int gen){
 
     int row;
     int column;
@@ -282,8 +283,6 @@ int check_tubes(cntNode* shm, growthInfo* g, int start, int end, int N, int C, i
             }
         }
     }
-
-    return 0;
 }
 
 //distance between two nodes calc
