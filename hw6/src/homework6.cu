@@ -271,7 +271,7 @@ grow_tubes(cntNode* readVector, const unsigned int readVectorSize, cntNode* shm,
         if((column+(N*2))<C*N) //to avoid seg fault; only need to insert above the 2 previous
             shm[row+column+(N*2)] = newNode;
         
-        
+        printf("%d\n", j);
         
         //maybe barrier? We are going to try hx
         // check_tubes(shm, g, start, end, N, C, j); //check tubes
