@@ -119,16 +119,21 @@ int main(int argc, char * argv[]){
     vector<growthInfo> growthInfoVector = get_growth_info(readVector, N); //get the intial growth data
     growthInfo * growthInfoPointer = growthInfoVector.data(); //pointer to vector, same as shm
 
-    // growthInfo * dGrowthInfoPointer = NULL;
+    growthInfo * dGrowthInfoPointer = NULL;
 
-    // err = cudaMalloc(&dGrowthInfoPointer, sizeof(growthInfo) * N);
+    err = cudaMalloc(&dGrowthInfoPointer, sizeof(growthInfo) * N);
 
-    // if (err != cudaSuccess){
-    //     fprintf(stderr, "dGrowthInfoPointer Alloc Failed (error code %s)!\n", cudaGetErrorString(err));
-    //     exit(EXIT_FAILURE);
-    // }
+    if (err != cudaSuccess){
+        fprintf(stderr, "dGrowthInfoPointer Alloc Failed (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
 
-    // err = cudaMemcpy(dGrowthInfoPointer)
+    err = cudaMemcpy(dGrowthInfoPointer, growthInfoPointer, sizeof(growthInfo) * N, cudaMemcpyHostToDevice);
+
+    if (err != cudaSuccess){
+        fprintf(stderr, "Failed to launch grow_tubes kernel (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
 
     int offset = N/B;
     
@@ -136,7 +141,7 @@ int main(int argc, char * argv[]){
     dim3 grid(N,1,1);
 
     cudaEventRecord(start);
-    grow_tubes<<<grid, block>>>(readVector.data(), readVector.size(), dShmPointer, growthInfoPointer, N, C, B);
+    grow_tubes<<<grid, block>>>(readVector.data(), readVector.size(), dShmPointer, dGrowthInfoPointer, N, C, B);
 
     err = cudaGetLastError();
 
