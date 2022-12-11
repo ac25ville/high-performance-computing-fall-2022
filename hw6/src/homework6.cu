@@ -85,9 +85,26 @@ int main(int argc, char * argv[]){
 
     vector<cntNode> readVector = read_file(filename, N);
 
+    cntNode * dReadVector = NULL;
+
+    err = cudaMalloc(&dReadVector, sizeof(growthInfo) * readVector.size());
+
+    if (err != cudaSuccess){
+        fprintf(stderr, "dReadVector Alloc Failed (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    err = cudaMemcpy(dReadVector, readVector.data(), sizeof(growthInfo) * readVector.size(), cudaMemcpyHostToDevice);
+
+    if (err != cudaSuccess){
+        fprintf(stderr, "Failed to copy readVector from host to device (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
     endTime = get_time();
 
     readTime = calculate_elapsed_time(startTime, endTime).count();
+
 
     //read end
 
@@ -117,21 +134,20 @@ int main(int argc, char * argv[]){
     }
     
     vector<growthInfo> growthInfoVector = get_growth_info(readVector, N); //get the intial growth data
-    growthInfo * growthInfoPointer = growthInfoVector.data(); //pointer to vector, same as shm
 
     growthInfo * dGrowthInfoPointer = NULL;
 
-    err = cudaMalloc(&dGrowthInfoPointer, sizeof(growthInfo) * N);
+    err = cudaMalloc(&dGrowthInfoPointer, sizeof(growthInfo) * growthInfoVector.size());
 
     if (err != cudaSuccess){
         fprintf(stderr, "dGrowthInfoPointer Alloc Failed (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
 
-    err = cudaMemcpy(dGrowthInfoPointer, growthInfoPointer, sizeof(growthInfo) * N, cudaMemcpyHostToDevice);
+    err = cudaMemcpy(dGrowthInfoPointer, growthInfoVector.data(), sizeof(growthInfo) * growthInfoVector.size(), cudaMemcpyHostToDevice);
 
     if (err != cudaSuccess){
-        fprintf(stderr, "Failed to launch grow_tubes kernel (error code %s)!\n", cudaGetErrorString(err));
+        fprintf(stderr, "Failed to copy growthInfo from host to device kernel (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
 
@@ -176,8 +192,10 @@ int main(int argc, char * argv[]){
     writeTime = calculate_elapsed_time(startTime, endTime).count();
 
     free(hShmPointer);
+
+    cudaFree(dReadVector);
     cudaFree(dShmPointer);
-    // cudaFree(dGrowthInfoPointer);
+    cudaFree(dGrowthInfoPointer);
 
     err = cudaDeviceReset();
 
