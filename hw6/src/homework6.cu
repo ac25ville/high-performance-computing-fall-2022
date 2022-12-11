@@ -250,7 +250,7 @@ grow_tubes(cntNode* readVector, const unsigned int readVectorSize, cntNode* shm,
 
         for(int j = 0; j<C-1; j++){
             row = j * N;
-            // g[column] = calculate_new_node((*(shm + column)), (*(shm + column + N)), (*(g+column))); 
+            g[column] = calculate_new_node((*(shm + column)), (*(shm + column + N)), (*(g+column))); 
                     
             cntNode newNode;
 
