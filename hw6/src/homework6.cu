@@ -94,7 +94,7 @@ int main(int argc, char * argv[]){
         exit(EXIT_FAILURE);
     }
 
-    err = cudaMemcpy(dReadVector, readVector.data(), sizeof(growthInfo) * readVector.size(), cudaMemcpyHostToDevice);
+    err = cudaMemcpy(dReadVector, &readVector[0], sizeof(growthInfo) * readVector.size(), cudaMemcpyHostToDevice);
 
     if (err != cudaSuccess){
         fprintf(stderr, "Failed to copy readVector from host to device (error code %s)!\n", cudaGetErrorString(err));
@@ -148,7 +148,7 @@ int main(int argc, char * argv[]){
         exit(EXIT_FAILURE);
     }
 
-    err = cudaMemcpy(dGrowthInfoPointer, growthInfoVector.data(), sizeof(growthInfo) * growthInfoVector.size(), cudaMemcpyHostToDevice);
+    err = cudaMemcpy(dGrowthInfoPointer, &growthInfoVector[0], sizeof(growthInfo) * growthInfoVector.size(), cudaMemcpyHostToDevice);
 
     if (err != cudaSuccess){
         fprintf(stderr, "Failed to copy growthInfo from host to device kernel (error code %s)!\n", cudaGetErrorString(err));
