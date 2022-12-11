@@ -119,6 +119,17 @@ int main(int argc, char * argv[]){
     vector<growthInfo> growthInfoVector = get_growth_info(readVector, N); //get the intial growth data
     growthInfo * growthInfoPointer = growthInfoVector.data(); //pointer to vector, same as shm
 
+    // growthInfo * dGrowthInfoPointer = NULL;
+
+    // err = cudaMalloc(&dGrowthInfoPointer, sizeof(growthInfo) * N);
+
+    // if (err != cudaSuccess){
+    //     fprintf(stderr, "dGrowthInfoPointer Alloc Failed (error code %s)!\n", cudaGetErrorString(err));
+    //     exit(EXIT_FAILURE);
+    // }
+
+    // err = cudaMemcpy(dGrowthInfoPointer)
+
     int offset = N/B;
     
     dim3 block(offset,1,1);
@@ -126,7 +137,6 @@ int main(int argc, char * argv[]){
 
     cudaEventRecord(start);
     grow_tubes<<<grid, block>>>(readVector.data(), readVector.size(), dShmPointer, growthInfoPointer, N, C, B);
-
 
     err = cudaGetLastError();
 
@@ -139,7 +149,7 @@ int main(int argc, char * argv[]){
     cudaEventElapsedTime(&multiProcessTime, start, stop);
     multiProcessTime /= 1000;
 
-    err = cudaMemcpy(dShmPointer, hShmPointer, sizeof(cntNode) * C*N, cudaMemcpyDeviceToHost);
+    err = cudaMemcpy(hShmPointer, dShmPointer, sizeof(cntNode) * C*N, cudaMemcpyDeviceToHost);
     
     if (err != cudaSuccess){
         fprintf(stderr, "Failed to copy data from device to host (error code %s)!\n", cudaGetErrorString(err));
@@ -162,6 +172,7 @@ int main(int argc, char * argv[]){
 
     free(hShmPointer);
     cudaFree(dShmPointer);
+    // cudaFree(dGrowthInfoPointer);
 
     err = cudaDeviceReset();
 
