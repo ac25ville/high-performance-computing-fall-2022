@@ -81,6 +81,8 @@ int main(int argc, char * argv[]){
 
     //read start
 
+    cout << "super test" << endl;
+
     startTime = get_time();
 
     vector<cntNode> readVector = read_file(filename, N);
@@ -93,8 +95,6 @@ int main(int argc, char * argv[]){
         fprintf(stderr, "dReadVector Alloc Failed (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
-
-    cout << "super test" << endl;
 
     err = cudaMemcpy(dReadVector, &readVector[0], sizeof(growthInfo) * readVector.size(), cudaMemcpyHostToDevice);
 
