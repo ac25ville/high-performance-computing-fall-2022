@@ -159,10 +159,11 @@ int main(int argc, char * argv[]){
     
     // dim3 block(offset,1,1);
     // dim3 grid(N,1,1);
+    const unsigned int readVectorSize = readVector.size();
 
     cout << "test" << endl;
     cudaEventRecord(start);
-    grow_tubes<<<N, offset>>>(dReadVector, readVector.size(), dShmPointer, dGrowthInfoPointer, N, C, B);
+    grow_tubes<<<N, offset>>>(dReadVector, readVectorSize, dShmPointer, dGrowthInfoPointer, N, C, B);
     cout << "testa" << endl;
     err = cudaGetLastError();
 
