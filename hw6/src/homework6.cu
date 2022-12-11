@@ -157,7 +157,7 @@ int main(int argc, char * argv[]){
     dim3 grid(N,1,1);
 
     cudaEventRecord(start);
-    grow_tubes<<<grid, block>>>(readVector.data(), readVector.size(), dShmPointer, dGrowthInfoPointer, N, C, B);
+    grow_tubes<<<grid, block>>>(dReadVector, readVector.size(), dShmPointer, dGrowthInfoPointer, N, C, B);
 
     err = cudaGetLastError();
 
