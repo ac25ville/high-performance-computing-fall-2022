@@ -127,6 +127,7 @@ int main(int argc, char * argv[]){
     hShmPointer = (cntNode *) malloc(sizeof(cntNode) * C*N);
 
     err = cudaMalloc(&dShmPointer, sizeof(cntNode)  * C*N);
+    cout << "super test" << endl;
 
     if (err != cudaSuccess){
         fprintf(stderr, "dShmPointer Alloc Failed (error code %s)!\n", cudaGetErrorString(err));
@@ -136,8 +137,6 @@ int main(int argc, char * argv[]){
     vector<growthInfo> growthInfoVector = get_growth_info(readVector, N); //get the intial growth data
 
     growthInfo * dGrowthInfoPointer = NULL;
-
-    cout << "super test" << endl;
 
     err = cudaMalloc(&dGrowthInfoPointer, sizeof(growthInfo) * growthInfoVector.size());
 
