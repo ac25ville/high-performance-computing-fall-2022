@@ -229,6 +229,7 @@ grow_tubes(cntNode* readVector, const unsigned int readVectorSize, cntNode* shm,
 
     const unsigned int column = (blockIdx.x * blockDim.x) + threadIdx.x;
     int row;
+    printf("%d\n", column);
     /*
     for(int j=0; j<2; j++){
         vector<cntNode> initTemp;
