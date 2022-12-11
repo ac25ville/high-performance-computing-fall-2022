@@ -126,6 +126,14 @@ int main(int argc, char * argv[]){
 
     cudaEventRecord(start);
     grow_tubes<<<grid, block>>>(readVector.data(), readVector.size(), dShmPointer, growthInfoPointer, N, C, B);
+
+
+    err = cudaGetLastError();
+
+    if (err != cudaSuccess){
+        fprintf(stderr, "Failed to launch grow_tubes kernel (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
     cudaEventRecord(stop);
     cudaEventSynchronize(stop);
     cudaEventElapsedTime(&multiProcessTime, start, stop);
