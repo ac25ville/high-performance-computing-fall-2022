@@ -232,7 +232,8 @@ grow_tubes(cntNode* readVector, const unsigned int readVectorSize, cntNode* shm,
         }
     */ 
 
-    const unsigned int column = ( (blockIdx.x  * blockDim.x) / gridDim.x ) + threadIdx.x;
+    // const unsigned int column = ( (blockIdx.x  * blockDim.x) / gridDim.x ) + threadIdx.x;
+    const unsigned int column = threadIdx.x;
     int row;
     /*
     for(int j=0; j<2; j++){
