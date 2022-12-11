@@ -34,7 +34,6 @@ vector<cntNode> read_file(string filename, int N);
 vector<growthInfo> get_growth_info(vector<cntNode> v, int N);
 double calculate_distance(cntNode a, cntNode b);
 void write_to_file(const cntNode * shm, string inputFile, int C, int N);
-
 std::chrono::time_point<std::chrono::steady_clock> get_time();
 std::chrono::duration<double> calculate_elapsed_time(std::chrono::time_point<std::chrono::steady_clock> start, std::chrono::time_point<std::chrono::steady_clock> end);
 
@@ -250,7 +249,7 @@ grow_tubes(cntNode* readVector, const unsigned int readVectorSize, cntNode* shm,
                 shm[row+column+(N*2)] = newNode;
             
             //maybe barrier? We are going to try hx
-            check_tubes(shm, g, start, end, N, C, j); //check tubes
+            check_tubes(shm, g, N, C, j); //check tubes
         }
     }
     
@@ -270,7 +269,7 @@ check_tubes(cntNode* shm, growthInfo* g, int N, int C, int gen){
                 (calculate_distance(*(shm + row + (column -1)), checkVal) < 5e-08 
                 || 
                 calculate_distance(*(shm + row + (column +1)), checkVal) < 5e-08)
-                && growthInfo[column].x_offset!=0
+                && g[column].x_offset!=0
             ){
 
                 //sets offset to zero here, the calculate node function still does trig though.
