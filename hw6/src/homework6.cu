@@ -40,7 +40,7 @@ std::chrono::time_point<std::chrono::steady_clock> get_time();
 std::chrono::duration<double> calculate_elapsed_time(std::chrono::time_point<std::chrono::steady_clock> start, std::chrono::time_point<std::chrono::steady_clock> end);
 
 //kernel functions
-__global__ void grow_tubes(vector<cntNode> readVector, cntNode* shm, growthInfo* g, int N, int C, int B);
+__global__ void grow_tubes(cntNode* readVector, const unsigned int readVectorSize, cntNode* shm, growthInfo* g, int N, int C, int B);
 
 int main(int argc, char * argv[]){
 
@@ -103,8 +103,6 @@ int main(int argc, char * argv[]){
     cout << "           GPU START          " << endl;
     cout << "------------------------------" << endl << endl;
 
-    // startTime = get_time();
-
     cntNode * hShmPointer = NULL; //pointer to pre-allocated vector, to avoid resizing issues
 
     cntNode * dShmPointer = NULL;
@@ -127,7 +125,7 @@ int main(int argc, char * argv[]){
     dim3 grid(N,1,1);
 
     cudaEventRecord(start);
-    grow_tubes<<<grid, block>>>(readVector, dShmPointer, growthInfoPointer, N, C, B);
+    grow_tubes<<<grid, block>>>(readVector.data(), readVector.size(), dShmPointer, growthInfoPointer, N, C, B);
     cudaEventRecord(stop);
     cudaEventSynchronize(stop);
     cudaEventElapsedTime(&multiProcessTime, start, stop);
@@ -139,9 +137,6 @@ int main(int argc, char * argv[]){
         fprintf(stderr, "Failed to copy data from device to host (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
-
-    // endTime = get_time();
-    multiProcessTime = calculate_elapsed_time(startTime, endTime).count();
 
     cout << "------------------------------" << endl;
     cout << "            GPU END           " << endl;
@@ -181,7 +176,7 @@ int main(int argc, char * argv[]){
 //grow and check
 
 __global__ void 
-grow_tubes(vector<cntNode> readVector, cntNode* shm, growthInfo* g, int N, int C, int B){
+grow_tubes(cntNode* readVector, const unsigned int readVectorSize, cntNode* shm, growthInfo* g, int N, int C, int B){
 
     //print inital values as asked for previously, decided not to change this functionality since it oucld be useful
     /* if(start == 0){
@@ -191,7 +186,6 @@ grow_tubes(vector<cntNode> readVector, cntNode* shm, growthInfo* g, int N, int C
     */ 
 
     const unsigned int column = (blockIdx.x * blockDim.x) + threadIdx.x;
-    const unsigned int readVectorSize = (int)readVector.size();
     int row;
     /*
     for(int j=0; j<2; j++){
@@ -209,14 +203,14 @@ grow_tubes(vector<cntNode> readVector, cntNode* shm, growthInfo* g, int N, int C
     }
     */
     cntNode newNode_a;
-    newNode_a.x = readVector.at(readVectorSize-(column)).x;
-    newNode_a.y = readVector.at(readVectorSize-(column)).y;
+    newNode_a.x = (*(readVector + (readVectorSize-(column)))).x;
+    newNode_a.y = (*(readVector + (readVectorSize-(column)))).y;
     
     shm[column] = newNode_a;
 
     cntNode newNode_b;
-    newNode_b.x = readVector.at(readVectorSize-(N+column)).x;
-    newNode_b.y = readVector.at(readVectorSize-(N+column)).y;
+    newNode_b.x = (*(readVector + (readVectorSize-(N+column)))).x;
+    newNode_b.y = (*(readVector + (readVectorSize-(N+column)))).y;
     
     shm[N+column] = newNode_b;
 
@@ -279,7 +273,8 @@ double calculate_distance(cntNode a, cntNode b){
     return sqrt((pow((a.x - b.x), 2) + pow((a.y - b.y), 2)));
 }
 
-growthInfo calculate_new_node(cntNode a, cntNode b, growthInfo g){
+__device__ growthInfo 
+calculate_new_node(cntNode a, cntNode b, growthInfo g){
 
     //trig is done with every iteration
     growthInfo newGrowthInfo;
