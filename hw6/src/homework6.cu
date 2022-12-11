@@ -251,7 +251,7 @@ grow_tubes(cntNode* readVector, const unsigned int readVectorSize, cntNode* shm,
     }
     */
     if(column < N){
-        printf("%d\n", column);
+        printf("%d\n", gridDim.x);
         cntNode newNode_a;
         newNode_a.x = readVector[readVectorSize-(column)].x;
         newNode_a.y = readVector[readVectorSize-(column)].y;
