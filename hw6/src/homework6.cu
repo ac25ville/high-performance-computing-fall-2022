@@ -153,11 +153,11 @@ int main(int argc, char * argv[]){
 
     int offset = N/B;
     
-    dim3 block(offset,1,1);
-    dim3 grid(N,1,1);
+    // dim3 block(offset,1,1);
+    // dim3 grid(N,1,1);
 
     cudaEventRecord(start);
-    grow_tubes<<<grid, block>>>(dReadVector, readVector.size(), dShmPointer, dGrowthInfoPointer, N, C, B);
+    grow_tubes<<<N, offset>>>(dReadVector, readVector.size(), dShmPointer, dGrowthInfoPointer, N, C, B);
 
     err = cudaGetLastError();
 
