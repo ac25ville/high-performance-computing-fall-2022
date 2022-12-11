@@ -137,9 +137,11 @@ int main(int argc, char * argv[]){
 
     growthInfo * dGrowthInfoPointer = NULL;
 
+    cout << "super test" << endl;
+
     err = cudaMalloc(&dGrowthInfoPointer, sizeof(growthInfo) * growthInfoVector.size());
 
-    cout << "super test" << endl;
+    
 
     if (err != cudaSuccess){
         fprintf(stderr, "dGrowthInfoPointer Alloc Failed (error code %s)!\n", cudaGetErrorString(err));
