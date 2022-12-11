@@ -39,7 +39,7 @@ std::chrono::duration<double> calculate_elapsed_time(std::chrono::time_point<std
 //kernel functions
 __global__ void grow_tubes(cntNode* readVector, const unsigned int readVectorSize, cntNode* shm, growthInfo* g, int N, int C, int B);
 __device__ growthInfo calculate_new_node(cntNode a, cntNode b, growthInfo g);
-__device__ void check_tubes(cntNode* shm, growthInfo* g, int N, int C, int gen);
+__device__ void check_tubes(cntNode* shm, growthInfo* g, int N, int C, int gen, int column);
 __device__ double calculate_distance(cntNode a, cntNode b);
 
 int main(int argc, char * argv[]){
@@ -249,7 +249,7 @@ grow_tubes(cntNode* readVector, const unsigned int readVectorSize, cntNode* shm,
                 shm[row+column+(N*2)] = newNode;
             
             //maybe barrier? We are going to try hx
-            check_tubes(shm, g, N, C, j); //check tubes
+            check_tubes(shm, g, N, C, j, column); //check tubes
         }
     }
     
@@ -257,31 +257,28 @@ grow_tubes(cntNode* readVector, const unsigned int readVectorSize, cntNode* shm,
 }
 
 __device__ void 
-check_tubes(cntNode* shm, growthInfo* g, int N, int C, int gen){
+check_tubes(cntNode* shm, growthInfo* g, int N, int C, int gen, int column){
 
     int row;
-    int column;
-    for(column = 0; column<N; column++){
-        for(int j = 1; j<gen+1; j++){
-            cntNode checkVal = *(shm + ((gen+1) * N) + column);
-            row = j * N;
-            if(
-                (calculate_distance(*(shm + row + (column -1)), checkVal) < 5e-08 
-                || 
-                calculate_distance(*(shm + row + (column +1)), checkVal) < 5e-08)
-                && g[column].x_offset!=0
-            ){
+    for(int j = 1; j<gen+1; j++){
+        cntNode checkVal = *(shm + ((gen+1) * N) + column);
+        row = j * N;
+        if(
+            (calculate_distance(*(shm + row + (column -1)), checkVal) < 5e-08 
+            || 
+            calculate_distance(*(shm + row + (column +1)), checkVal) < 5e-08)
+            && g[column].x_offset!=0
+        ){
 
-                //sets offset to zero here, the calculate node function still does trig though.
+            //sets offset to zero here, the calculate node function still does trig though.
 
-                if(calculate_distance(*(shm + row + (column +1)), checkVal) < 5e-08){
-                    g[column+1].x_offset = 0;
-                } else if(calculate_distance(*(shm + row + (column -1)), checkVal) < 5e-08) {
-                    g[column-1].x_offset = 0;
-                }
-                g[column].x_offset = 0;
-                
+            if(calculate_distance(*(shm + row + (column +1)), checkVal) < 5e-08){
+                g[column+1].x_offset = 0;
+            } else if(calculate_distance(*(shm + row + (column -1)), checkVal) < 5e-08) {
+                g[column-1].x_offset = 0;
             }
+            g[column].x_offset = 0;
+            
         }
     }
 }
