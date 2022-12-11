@@ -126,8 +126,9 @@ int main(int argc, char * argv[]){
 
     hShmPointer = (cntNode *) malloc(sizeof(cntNode) * C*N);
 
-    err = cudaMalloc(&dShmPointer, sizeof(cntNode)  * C*N);
     cout << "super test" << endl;
+    err = cudaMalloc(&dShmPointer, sizeof(cntNode)  * C*N);
+    
 
     if (err != cudaSuccess){
         fprintf(stderr, "dShmPointer Alloc Failed (error code %s)!\n", cudaGetErrorString(err));
@@ -249,38 +250,41 @@ grow_tubes(cntNode* readVector, const unsigned int readVectorSize, cntNode* shm,
         std::copy(initTemp.begin(),initTemp.end(), shm + (start+row));
     }
     */
-    cntNode newNode_a;
-    newNode_a.x = readVector[readVectorSize-(column)].x;
-    newNode_a.y = readVector[readVectorSize-(column)].y;
-    
-    shm[column] = newNode_a;
-
-    cntNode newNode_b;
-    newNode_b.x = readVector[readVectorSize-(N+column)].x;
-    newNode_b.y = readVector[readVectorSize-(N+column)].y;
-    
-    shm[N+column] = newNode_b;
-
-    
-
-    for(int j = 0; j<C-1; j++){
-        row = j * N;
-        // g[column] = calculate_new_node((*(shm + column)), (*(shm + column + N)), (*(g+column))); 
-                
-        cntNode newNode;
-
-        //still adding x & y offset
-        newNode.x = shm[column + row + N].x + g[column].x_offset; 
-        newNode.y = shm[column + row + N].y + g[column].y_offset;
-
-        if((column+(N*2))<C*N) //to avoid seg fault; only need to insert above the 2 previous
-            shm[row+column+(N*2)] = newNode;
+    if(column < N){
+        cntNode newNode_a;
+        newNode_a.x = readVector[readVectorSize-(column)].x;
+        newNode_a.y = readVector[readVectorSize-(column)].y;
         
-        printf("%d\n", j);
+        shm[column] = newNode_a;
+
+        cntNode newNode_b;
+        newNode_b.x = readVector[readVectorSize-(N+column)].x;
+        newNode_b.y = readVector[readVectorSize-(N+column)].y;
         
-        //maybe barrier? We are going to try hx
-        // check_tubes(shm, g, start, end, N, C, j); //check tubes
+        shm[N+column] = newNode_b;
+
+        
+
+        for(int j = 0; j<C-1; j++){
+            row = j * N;
+            // g[column] = calculate_new_node((*(shm + column)), (*(shm + column + N)), (*(g+column))); 
+                    
+            cntNode newNode;
+
+            //still adding x & y offset
+            newNode.x = shm[column + row + N].x + g[column].x_offset; 
+            newNode.y = shm[column + row + N].y + g[column].y_offset;
+
+            if((column+(N*2))<C*N) //to avoid seg fault; only need to insert above the 2 previous
+                shm[row+column+(N*2)] = newNode;
+            
+            printf("%d\n", j);
+            
+            //maybe barrier? We are going to try hx
+            // check_tubes(shm, g, start, end, N, C, j); //check tubes
+        }
     }
+    
 
 }
 
