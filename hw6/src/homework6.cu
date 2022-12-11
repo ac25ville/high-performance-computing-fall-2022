@@ -8,6 +8,7 @@
 #include <chrono>
 #include <ctime>
 #include <cuda_runtime.h>
+#include <cuda/barrier>
 
 #include <unistd.h>
 #include <cstdlib>
@@ -85,17 +86,18 @@ int main(int argc, char * argv[]){
 
     vector<cntNode> readVector = read_file(filename, N);
 
-    cntNode * dReadVector = NULL;
-
-    err = cudaMalloc(&dReadVector, sizeof(growthInfo) * readVector.size());
+    cntNode * dReadVector = NULL; //device read vector (init data)
+    err = cudaMalloc(&dReadVector, sizeof(growthInfo) * readVector.size()); //alloc device init data
 
     if (err != cudaSuccess){
         fprintf(stderr, "dReadVector Alloc Failed (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
 
+    //memcpy init data --> device init data
     err = cudaMemcpy(dReadVector, &readVector[0], sizeof(growthInfo) * readVector.size(), cudaMemcpyHostToDevice);
 
+    //check for errors
     if (err != cudaSuccess){
         fprintf(stderr, "Failed to copy readVector from host to device (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
@@ -114,49 +116,49 @@ int main(int argc, char * argv[]){
         return 1;
     }
 
-    //thread creation start
-
     cout << "------------------------------" << endl;
     cout << "           GPU START          " << endl;
     cout << "------------------------------" << endl << endl;
 
-    cntNode * hShmPointer = NULL; //pointer to pre-allocated vector, to avoid resizing issues
+    cntNode * hShmPointer = NULL; //host shm pointer
+    hShmPointer = (cntNode *) malloc(sizeof(cntNode) * C*N); //alloc host shm
 
-    cntNode * dShmPointer = NULL;
-
-    hShmPointer = (cntNode *) malloc(sizeof(cntNode) * C*N);
+    cntNode * dShmPointer = NULL; //device shm pointer
+    err = cudaMalloc(&dShmPointer, sizeof(cntNode)  * C*N); //alloc device shm
     
-    err = cudaMalloc(&dShmPointer, sizeof(cntNode)  * C*N);
-    
-
+    //check for errors for dShm
     if (err != cudaSuccess){
         fprintf(stderr, "dShmPointer Alloc Failed (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
     
-    vector<growthInfo> growthInfoVector = get_growth_info(readVector, N); //get the intial growth data
+    //calculate growth info init
+    vector<growthInfo> growthInfoVector = get_growth_info(readVector, N); //get the init growth data
 
-    growthInfo * dGrowthInfoPointer = NULL;
+    growthInfo * dGrowthInfoPointer = NULL; //device growth info pointer
+    err = cudaMalloc(&dGrowthInfoPointer, sizeof(growthInfo) * growthInfoVector.size()); //alloc device growth info pointer
 
-    err = cudaMalloc(&dGrowthInfoPointer, sizeof(growthInfo) * growthInfoVector.size());
-
+    //check for errors
     if (err != cudaSuccess){
         fprintf(stderr, "dGrowthInfoPointer Alloc Failed (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
 
+    //memcpy init growth info --> device growth info
     err = cudaMemcpy(dGrowthInfoPointer, &growthInfoVector[0], sizeof(growthInfo) * growthInfoVector.size(), cudaMemcpyHostToDevice);
 
+    //check for errors
     if (err != cudaSuccess){
         fprintf(stderr, "Failed to copy growthInfo from host to device kernel (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
 
-    int offset = N/B;
-
+    //get some consts together
+    const unsigned int offset = N/B;
     const unsigned int readVectorSize = readVector.size();
 
-    cudaEventRecord(start);
+    cudaEventRecord(start); //start kernel timing
+
     grow_tubes<<<N, offset>>>(dReadVector, readVectorSize, dShmPointer, dGrowthInfoPointer, N, C, B);
 
     err = cudaGetLastError();
@@ -165,13 +167,15 @@ int main(int argc, char * argv[]){
         fprintf(stderr, "Failed to launch grow_tubes kernel (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
     }
-    cudaEventRecord(stop);
+    cudaEventRecord(stop); //end kernel timing
     cudaEventSynchronize(stop);
+    //get kernel time
     cudaEventElapsedTime(&multiProcessTime, start, stop);
     multiProcessTime /= 1000;
-
+    //copy device data --> host data
     err = cudaMemcpy(hShmPointer, dShmPointer, sizeof(cntNode) * C*N, cudaMemcpyDeviceToHost);
     
+    //check for errors
     if (err != cudaSuccess){
         fprintf(stderr, "Failed to copy data from device to host (error code %s)!\n", cudaGetErrorString(err));
         exit(EXIT_FAILURE);
@@ -191,12 +195,15 @@ int main(int argc, char * argv[]){
     //write end
     writeTime = calculate_elapsed_time(startTime, endTime).count();
 
+    //free host
     free(hShmPointer);
 
+    //free device
     cudaFree(dReadVector);
     cudaFree(dShmPointer);
     cudaFree(dGrowthInfoPointer);
 
+    //reset device
     err = cudaDeviceReset();
 
     totalEndTime = get_time();
@@ -208,7 +215,7 @@ int main(int argc, char * argv[]){
     cout << "--------------------------------------------" << endl;
     cout << " Total              | " << totalTime   << "s" << endl;
     cout << " Read               | " << readTime    << "s" << endl;
-    cout << " Multi Proc Portion | " << multiProcessTime  << "s" << endl;
+    cout << " GPU Timing         | " << multiProcessTime  << "s" << endl;
     cout << " Write              | " << writeTime   << "s" << endl;
     cout << endl;
 
@@ -249,11 +256,9 @@ grow_tubes(cntNode* readVector, const unsigned int readVectorSize, cntNode* shm,
                 shm[row+column+(N*2)] = newNode;
             
             //maybe barrier? We are going to try hx
-            check_tubes(shm, g, N, C, j, column); //check tubes
+            check_tubes(shm, g, N, C, j, column); //collision detection
         }
     }
-    
-
 }
 
 __device__ void 
