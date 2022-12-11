@@ -81,8 +81,6 @@ int main(int argc, char * argv[]){
 
     //read start
 
-    cout << "super test" << endl;
-
     startTime = get_time();
 
     vector<cntNode> readVector = read_file(filename, N);
@@ -155,15 +153,12 @@ int main(int argc, char * argv[]){
     }
 
     int offset = N/B;
-    
-    // dim3 block(offset,1,1);
-    // dim3 grid(N,1,1);
+
     const unsigned int readVectorSize = readVector.size();
 
-    cout << "test" << endl;
     cudaEventRecord(start);
     grow_tubes<<<N, offset>>>(dReadVector, readVectorSize, dShmPointer, dGrowthInfoPointer, N, C, B);
-    cout << "testa" << endl;
+
     err = cudaGetLastError();
 
     if (err != cudaSuccess){
@@ -225,17 +220,9 @@ int main(int argc, char * argv[]){
 __global__ void 
 grow_tubes(cntNode* readVector, const unsigned int readVectorSize, cntNode* shm, growthInfo* g, int N, int C, int B){
 
-    //print inital values as asked for previously, decided not to change this functionality since it oucld be useful
-    /* if(start == 0){
-        for(int i = 0; i<N; i++){
-            std::cout << " Theta: " << (*(g+i)).theta << ", Magnitude: " << (*(g+i)).v << endl;
-        }
-    */ 
-
     const unsigned int column = ( (blockIdx.x  * blockDim.x) ) + threadIdx.x;
     int row;
     if(column < N){
-        printf("%d\n", blockIdx.x);
         cntNode newNode_a;
         newNode_a.x = readVector[readVectorSize-(column)].x;
         newNode_a.y = readVector[readVectorSize-(column)].y;
