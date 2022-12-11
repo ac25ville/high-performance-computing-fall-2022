@@ -234,7 +234,6 @@ grow_tubes(cntNode* readVector, const unsigned int readVectorSize, cntNode* shm,
 
     const unsigned int column = ( (blockIdx.x  * blockDim.x) / gridDim.x ) + threadIdx.x;
     int row;
-    printf("%d\n", column);
     /*
     for(int j=0; j<2; j++){
         vector<cntNode> initTemp;
@@ -251,6 +250,7 @@ grow_tubes(cntNode* readVector, const unsigned int readVectorSize, cntNode* shm,
     }
     */
     if(column < N){
+        printf("%d\n", column);
         cntNode newNode_a;
         newNode_a.x = readVector[readVectorSize-(column)].x;
         newNode_a.y = readVector[readVectorSize-(column)].y;
